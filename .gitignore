@@ -41,4 +41,5 @@ yarn-error.log*
 next-env.d.ts
 
 #personal
-README.md
+AGENTS.md
+CLAUDE.md

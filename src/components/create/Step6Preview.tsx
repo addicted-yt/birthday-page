@@ -224,6 +224,17 @@ export function Step6Preview({ state, onPreview, onBack, onGoToStep }: Step6Prev
         预览后可以继续修改，或直接复制链接分享给 TA
       </motion.p>
 
+      <motion.p
+        className="text-center max-w-xs"
+        style={{ fontSize: "clamp(0.62rem, 1.1vw, 0.72rem)", color: "rgba(255,255,255,0.18)", marginTop: "2px", lineHeight: 1.7 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ ...springGentle, delay: 0.45 }}
+      >
+        请确保上传的图片及文字内容符合当地法律法规。<br />
+        因用户内容引发的任何法律责任，由创建者自行承担，与本作者无关。
+      </motion.p>
+
       <div className="flex flex-col gap-3 w-full items-center">
         <SpringButton variant="primary" onClick={onPreview} className="w-full">
           预览效果
