@@ -82,6 +82,16 @@ export function CosmicBackground() {
       t += 1;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      // 屏幕尺寸感知：小屏幕自动降低强度，大屏幕保持完整效果
+      // 390px(手机) → scale=0.45，768px(平板) → scale=0.72，1440px+(桌面) → scale=1.0
+      const screenScale = Math.min(1.0, Math.max(0.45,
+        canvas.width <= 390 ? 0.45 :
+        canvas.width >= 1440 ? 1.0 :
+        0.45 + (canvas.width - 390) / (1440 - 390) * 0.55
+      ));
+      // 中心压暗基准：小屏阅读区更需要留白
+      const centerDimBase = 0.42 - (1 - screenScale) * 0.12; // 小屏最低压到30%
+
       // 背景：中心微微提亮
       const grad = ctx.createRadialGradient(
         canvas.width * 0.5, canvas.height * 0.3, 0,
@@ -93,13 +103,14 @@ export function CosmicBackground() {
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // 星云光晕：3层，更明显
-      const breathe = Math.sin(t * 0.006) * 0.015 + 0.035;
+      // 星云光晕：强度随屏幕缩放
+      const breatheBase = Math.sin(t * 0.006) * 0.015 + 0.035;
+      const breathe = breatheBase * screenScale;
       const haloData = [
         { cx: 0.22, cy: 0.28, r: 0.32, c: `rgba(70,95,210,${breathe})` },
         { cx: 0.80, cy: 0.62, r: 0.28, c: `rgba(120,70,185,${breathe * 0.9})` },
         { cx: 0.55, cy: 0.75, r: 0.24, c: `rgba(40,130,195,${breathe * 0.75})` },
-        // 新增：右上角冷蓝云气
+        // 右上角冷蓝云气
         { cx: 0.85, cy: 0.18, r: 0.22, c: `rgba(50,100,200,${breathe * 0.6})` },
       ];
       for (const h of haloData) {
@@ -122,52 +133,59 @@ export function CosmicBackground() {
         if (s.y < 0) s.y = 1;
         if (s.y > 1) s.y = 0;
         const twinkle = Math.sin(t * s.twinkleSpeed + s.twinkleOffset) * 0.18;
-        // 中心阅读区域（x:15%~85%，y:20%~80%）星辰适当压暗，边缘保持亮
+        // 中心阅读区域压暗，小屏幕压得更狠
         const dx = Math.abs(s.x - 0.5) / 0.5; // 0=中心，1=边缘
         const dy = Math.abs(s.y - 0.5) / 0.5;
-        const edgeFactor = Math.min(1, (dx * 0.6 + dy * 0.4) * 1.4); // 0~1，中心压暗
-        const centerDim = 0.42 + edgeFactor * 0.58; // 中心最多压到42%
-        const op = Math.max(0, Math.min(1, (s.opacity + twinkle) * centerDim));
+        const edgeFactor = Math.min(1, (dx * 0.6 + dy * 0.4) * 1.4);
+        const centerDim = centerDimBase + edgeFactor * (1 - centerDimBase);
+        // 星星整体亮度随屏幕缩放
+        const op = Math.max(0, Math.min(1, (s.opacity + twinkle) * centerDim * screenScale));
         const px = s.x * canvas.width;
         const py = s.y * canvas.height;
+        // 星星半径也随屏幕缩放（小屏幕星点更小）
+        const sr = s.r * (0.7 + screenScale * 0.3);
 
-        // 亮星加光晕
+        // 亮星加光晕（小屏幕光晕更收敛）
         if (s.glow) {
-          const grd = ctx.createRadialGradient(px, py, 0, px, py, s.r * 4.5);
-          grd.addColorStop(0, `rgba(200,215,255,${op * 0.45})`);
+          const glowRadius = sr * (3.5 + screenScale * 1.0);
+          const grd = ctx.createRadialGradient(px, py, 0, px, py, glowRadius);
+          grd.addColorStop(0, `rgba(200,215,255,${op * 0.45 * screenScale})`);
           grd.addColorStop(1, "rgba(0,0,0,0)");
           ctx.fillStyle = grd;
           ctx.beginPath();
-          ctx.arc(px, py, s.r * 4.5, 0, Math.PI * 2);
+          ctx.arc(px, py, glowRadius, 0, Math.PI * 2);
           ctx.fill();
         }
 
         ctx.beginPath();
-        ctx.arc(px, py, s.r, 0, Math.PI * 2);
+        ctx.arc(px, py, sr, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(220,230,255,${op})`;
         ctx.fill();
       }
 
-      // 流星
+      // 流星：小屏幕降低频率、缩短长度、降低不透明度
       nextMeteor--;
       if (nextMeteor <= 0) {
         spawnMeteor();
-        nextMeteor = 280 + Math.random() * 420;
+        // 小屏幕流星间隔更长
+        nextMeteor = (280 + Math.random() * 420) / screenScale;
       }
       for (let i = meteors.length - 1; i >= 0; i--) {
         const m = meteors[i];
         m.life++;
         const progress = m.life / m.maxLife;
         const fade = progress < 0.15 ? progress / 0.15 : progress > 0.7 ? 1 - (progress - 0.7) / 0.3 : 1;
-        const op = m.opacity * fade;
+        const op = m.opacity * fade * screenScale;
         const sx = m.x * canvas.width;
         const sy = m.y * canvas.height;
         m.x += m.vx / canvas.width;
         m.y += m.vy / canvas.height;
         const ex = m.x * canvas.width;
         const ey = m.y * canvas.height;
-        const tailX = sx - (m.vx / canvas.width) * m.len;
-        const tailY = sy - (m.vy / canvas.height) * m.len;
+        // 流星尾巴长度也随屏幕缩放
+        const mLen = m.len * (0.6 + screenScale * 0.4);
+        const tailX = sx - (m.vx / canvas.width) * mLen;
+        const tailY = sy - (m.vy / canvas.height) * mLen;
         const mg = ctx.createLinearGradient(tailX, tailY, ex, ey);
         mg.addColorStop(0, `rgba(255,255,255,0)`);
         mg.addColorStop(0.6, `rgba(200,215,255,${op * 0.45})`);
@@ -176,7 +194,7 @@ export function CosmicBackground() {
         ctx.moveTo(tailX, tailY);
         ctx.lineTo(ex, ey);
         ctx.strokeStyle = mg;
-        ctx.lineWidth = 1.4;
+        ctx.lineWidth = 1.4 * (0.7 + screenScale * 0.3);
         ctx.stroke();
         if (m.life >= m.maxLife) meteors.splice(i, 1);
       }
