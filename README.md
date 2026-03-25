@@ -27,9 +27,9 @@
 用几分钟为 TA 制作一份专属生日祝福：上传照片、写下心里话，生成一段浪漫的星空动画贺卡，通过链接分享给重要的人。
 
 <p align="center">
-  <a href="https://happybirthday-alpha-gules.vercel.app/">🌐 免费在线使用 - vercel</a>
+  <a href="https://happybirthday-alpha-gules.vercel.app/">🌐 免费在线使用 - Vercel</a> · <a href="https://happy-birthday.65751062.workers.dev/">☁️ 免费在线使用 - Cloudflare</a>
   <br />
-  <span style="font-size:12px;color:#888;">⚠️ 国内访问可能需要科学上网</span>
+  <span style="font-size:12px;color:#888;">⚠️ 国内访问可能需要科学上网 · 推荐使用电脑端体验，移动端适配优化中</span>
 </p>
 
 
