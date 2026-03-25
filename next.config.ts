@@ -1,13 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "export",
-  // 静态导出时图片优化需要禁用（Cloudflare Pages 不支持 Next.js Image Optimization Server）
-  images: {
-    unoptimized: true,
-  },
-  // 生成 trailing slash，Cloudflare Pages 路由更稳定
-  trailingSlash: true,
+  // 注意：不设置 output: "export"，保留 SSR 以支持动态 OG 图（/result/opengraph-image）
+  // Vercel 原生支持 SSR，无需静态导出
 };
 
 export default nextConfig;
