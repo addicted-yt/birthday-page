@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://happybirthday-alpha-gules.vercel.app"),
+  metadataBase: new URL("https://thesedays.cn"),
   title: "送给TA的一份特别祝福",
   description: "可定制 · 可分享 · 沉浸式体验",
 };

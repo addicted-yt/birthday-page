@@ -24,7 +24,8 @@ function getR2Bucket(): R2Bucket | undefined {
 
 // 允许的来源域名列表（新增域名在此追加即可）
 const ALLOWED_ORIGINS = new Set([
-  "https://happybirthday-alpha-gules.vercel.app",
+  "https://thesedays.cn",
+  "https://www.thesedays.cn",
   "https://happy-birthday.65751062.workers.dev",
   "http://localhost:3000",
   "http://localhost:3001",
