@@ -1,10 +1,10 @@
 "use client";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { CreateFlowState, CreateStep, BirthdayData } from "@/types/birthday";
-import { springGentle, springPress } from "@/lib/animationPresets";
+import { springGentle } from "@/lib/animationPresets";
 import { encodeBirthdayData } from "@/lib/urlEncoding";
 import { idbPut, uploadImageToR2 } from "@/lib/imageStorage";
 import { BrandFooter } from "@/components/landing/BrandFooter";
@@ -149,7 +149,7 @@ export function StepFlow({ restoreSid }: { restoreSid?: string | null }) {
 
   return (
     <div
-      className="relative min-h-dvh flex flex-col items-center justify-center px-6 py-16"
+      className="relative min-h-dvh flex flex-col items-center justify-start px-6 pt-24 pb-24"
       style={{ background: "radial-gradient(ellipse at 50% 30%, #111d40 0%, #080d1a 75%)" }}
     >
       <SubtleBackground />

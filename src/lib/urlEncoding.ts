@@ -1,6 +1,16 @@
 import LZString from "lz-string";
 import { BirthdayData } from "@/types/birthday";
 
+export function decodeBirthdayTextData(d: string | null): Partial<BirthdayData> | null {
+  if (!d) return null;
+
+  try {
+    return JSON.parse(LZString.decompressFromEncodedURIComponent(d) || "{}");
+  } catch {
+    return null;
+  }
+}
+
 export function encodeBirthdayData(data: BirthdayData): {
   d: string;
   sid: string;
@@ -40,12 +50,8 @@ export function decodeBirthdayData(
   d: string | null,
   sid: string | null
 ): BirthdayData | null {
-  if (!d) return null;
-
-  try {
-    const textData = JSON.parse(
-      LZString.decompressFromEncodedURIComponent(d) || "{}"
-    );
+  const textData = decodeBirthdayTextData(d);
+  if (!textData) return null;
 
     // URL 中的 d 参数是文字内容的权威来源，始终优先使用
     // sid 仅用于从 sessionStorage 补充图片 dataUrl（dataUrl 太大无法放进 URL）
@@ -94,17 +100,14 @@ export function decodeBirthdayData(
       }
     }
 
-    return {
-      v: 1,
-      name: textData.name || "",
-      giftLetter: textData.giftLetter || "",
-      letterAlign: textData.letterAlign,
-      placeholderPhrases: textData.placeholderPhrases,
-      placeholderStyles: textData.placeholderStyles,
-      cardPhotos,
-      giftImages,
-    };
-  } catch {
-    return null;
-  }
+  return {
+    v: 1,
+    name: textData.name || "",
+    giftLetter: textData.giftLetter || "",
+    letterAlign: textData.letterAlign,
+    placeholderPhrases: textData.placeholderPhrases,
+    placeholderStyles: textData.placeholderStyles,
+    cardPhotos,
+    giftImages,
+  };
 }

@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { ResultContent } from "./ResultContent";
+import { decodeBirthdayTextData } from "@/lib/urlEncoding";
 
 interface Props {
   searchParams: Promise<{ d?: string; sid?: string; name?: string; creator?: string }>;
@@ -9,16 +10,24 @@ interface Props {
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const params = await searchParams;
   const siteUrl = "https://thesedays.cn";
-  const name = params.name
-    ? (() => { try { return decodeURIComponent(params.name!); } catch { return params.name!; } })()
-    : "你";
+  const decoded = decodeBirthdayTextData(params.d ?? null);
+  const name =
+    typeof decoded?.name === "string" && decoded.name.trim()
+      ? decoded.name
+      : params.name
+        ? (() => {
+            try {
+              return decodeURIComponent(params.name);
+            } catch {
+              return params.name;
+            }
+          })()
+        : "朋友";
   const title = `送给 ${name} 的生日祝福`;
   const description = "一份专属的沉浸式生日祝福";
   const ogImageUrl = new URL(`/result/opengraph-image?name=${encodeURIComponent(name)}`, siteUrl).toString();
   const resultQuery = new URLSearchParams({
     ...(params.d ? { d: params.d } : {}),
-    ...(params.sid ? { sid: params.sid } : {}),
-    ...(params.name ? { name: params.name } : {}),
     ...(params.creator ? { creator: params.creator } : {}),
   }).toString();
   const resultUrl = new URL(resultQuery ? `/result?${resultQuery}` : "/result", siteUrl).toString();

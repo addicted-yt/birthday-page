@@ -329,8 +329,9 @@ export function Scene4_5Candle({ onBlown, onEnter, onMicEnded, onMicPromptChange
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return;
+    const scrollRoot = el.closest(".scroll-snap-y");
     const triggerEnter = () => {
-      if (hasEnteredRef.current || hasBlownRef.current || hasExitedRef.current) return;
+      if (hasEnteredRef.current || hasBlownRef.current || hasExitedRef.current || phase !== "idle") return;
       hasEnteredRef.current = true;
       onEnterRef.current();
       window.setTimeout(() => setPhase("subtitles"), 800);
@@ -342,12 +343,15 @@ export function Scene4_5Candle({ onBlown, onEnter, onMicEnded, onMicPromptChange
           triggerEnter();
         }
       },
-      { threshold: [0.42, 0.62, 0.82] }
+      {
+        root: scrollRoot instanceof Element ? scrollRoot : null,
+        threshold: [0.42, 0.62, 0.82],
+      }
     );
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [phase]);
 
   useEffect(() => {
     const el = sectionRef.current;
@@ -482,7 +486,10 @@ export function Scene4_5Candle({ onBlown, onEnter, onMicEnded, onMicPromptChange
           triggerExit();
         }
       },
-      { threshold: [0.45, 0.7] }
+      {
+        root: el.closest(".scroll-snap-y"),
+        threshold: [0.45, 0.7],
+      }
     );
 
     el.addEventListener("wheel", onWheel, { passive: true });

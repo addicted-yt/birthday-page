@@ -94,8 +94,24 @@ export function ResultPageShell({
 
   const shareUrl =
     typeof window !== "undefined" && encodedData
-      ? `${window.location.origin}/result?d=${encodedData}${encodedName ? `&name=${encodedName}` : ""}`
+      ? `${window.location.origin}/result?d=${encodedData}`
       : "";
+
+  const scrollToSection = useCallback((target: HTMLElement | null, delay = 0) => {
+    if (!target) return;
+    const run = () => {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.setTimeout(() => {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 180);
+    };
+
+    if (delay > 0) {
+      window.setTimeout(run, delay);
+    } else {
+      run();
+    }
+  }, []);
 
   const { cancel: cancelFirstInteraction } = useFirstInteraction(
     useCallback(() => {
@@ -170,9 +186,9 @@ export function ResultPageShell({
     birthdayExitedCakeRef.current = true;
     void ensureBirthdaySongStopped();
     requestAnimationFrame(() => {
-      giftRef.current?.scrollIntoView({ behavior: "smooth" });
+      scrollToSection(giftRef.current);
     });
-  }, [ensureBirthdaySongStopped]);
+  }, [ensureBirthdaySongStopped, scrollToSection]);
 
   const handleGiftEnter = useCallback(() => {
     birthdayExitedCakeRef.current = true;
@@ -193,19 +209,17 @@ export function ResultPageShell({
       pianoMusic.fadeIn(0.65);
       setMusicOn(true);
       requestAnimationFrame(() => {
-        scene5Ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        scrollToSection(scene5Ref.current);
       });
     };
 
     void openGiftFlow();
-  }, [ensureBirthdaySongStopped, pianoMusic]);
+  }, [ensureBirthdaySongStopped, pianoMusic, scrollToSection]);
 
   const handleLetterDone = useCallback(() => {
     if (!scene5PhotosRef.current) return;
-    setTimeout(() => {
-      scene5PhotosRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 300);
-  }, []);
+    scrollToSection(scene5PhotosRef.current, 300);
+  }, [scrollToSection]);
 
   const handleEndingVisible = useCallback(() => {
     setEndingVisible(true);

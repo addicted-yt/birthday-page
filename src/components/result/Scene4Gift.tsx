@@ -37,9 +37,13 @@ export function Scene4Gift({ onOpen, onEnter, sectionRef: externalSectionRef }: 
   useEffect(() => {
     const el = internalSectionRef.current;
     if (!el) return;
+    const scrollRoot = el.closest(".scroll-snap-y");
     const obs = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) onEnterRef.current?.(); },
-      { threshold: 0.5 }
+      {
+        root: scrollRoot instanceof Element ? scrollRoot : null,
+        threshold: [0.2, 0.35, 0.5],
+      }
     );
     obs.observe(el);
     return () => obs.disconnect();
