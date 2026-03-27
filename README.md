@@ -1,4 +1,4 @@
-# 🎂 thesedays--Birthday Page
+# 🎂 [thesedays](thesedays.cn)--Birthday Page
 
 > **有些话说不出口，就让代码替你表达 💫**
 >
@@ -25,12 +25,11 @@
 用几分钟为 TA 制作一份专属生日祝福：上传照片、写下心里话，生成一段浪漫的星空动画贺卡，通过链接分享给重要的人。
 
 <p align="center">
-  <a href="https://happybirthday-alpha-gules.vercel.app/">🌐 免费在线使用 - Vercel</a> · <a href="https://happy-birthday.65751062.workers.dev/">☁️ 免费在线使用 - Cloudflare</a>
+  <a href="https://thesedays.cn/">🌐 免费在线使用</a> · <a href="https://happy-birthday.65751062.workers.dev/">☁️ 备用链接</a>
   <br />
-  <span style="font-size:12px;color:#888;">⚠️ 国内访问可能需要科学上网 · 推荐使用电脑端体验，移动端适配优化中</span>
-  <br />
-  <span style="font-size:12px;color:#f59e0b;">⚠️ Vercel 版本暂不支持图片云存储，分享链接中可能无法显示图片，推荐使用 Cloudflare 版本</span>
+  <span style="font-size:12px;color:#888;">⚠️ 国内访问备用链接可能需要科学上网 · 推荐使用电脑端体验，移动端优化中</span>
 </p>
+
 
 
 ---
