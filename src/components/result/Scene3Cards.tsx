@@ -479,6 +479,24 @@ export function Scene3Cards({ cardPhotos }: Scene3CardsProps) {
           );
         })}
       </motion.div>
+
+      {isMobileDevice && isHovered && expandedIndex === null && (
+        <motion.p
+          className="font-light select-none"
+          style={{
+            fontSize: "clamp(0.74rem, 1.5vw, 0.9rem)",
+            letterSpacing: "0.26em",
+            color: "rgba(255,255,255,0.28)",
+            margin: 0,
+          }}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 6 }}
+          transition={{ ...springGentle, delay: 0.08 }}
+        >
+          点击卡片查看
+        </motion.p>
+      )}
     </section>
   );
 }

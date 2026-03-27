@@ -72,6 +72,27 @@ export function useAudioPlayer(src: string) {
     }
   }, [getAudio, clearFade]);
 
+  const playMuted = useCallback((onBlocked?: () => void) => {
+    const audio = getAudio();
+    if (!audio) return;
+    clearFade();
+    targetVolRef.current = Math.max(targetVolRef.current, 0.65);
+    audio.volume = 0;
+    if (audio.currentTime > 0 && !playingRef.current) {
+      audio.currentTime = 0;
+    }
+    const p = audio.play();
+    if (p) {
+      p.then(() => {
+        playingRef.current = true;
+      }).catch(() => {
+        onBlocked?.();
+      });
+    } else {
+      playingRef.current = true;
+    }
+  }, [getAudio, clearFade]);
+
   const fadeOut = useCallback((onDone?: () => void) => {
     const audio = getAudio();
     if (!audio) return;
@@ -109,7 +130,31 @@ export function useAudioPlayer(src: string) {
     }
   }, [fadeIn, fadeOut]);
 
+  const refreshAfterInterruption = useCallback((targetVolume = targetVolRef.current) => {
+    const audio = getAudio();
+    if (!audio) return;
+    const currentTime = audio.currentTime;
+    clearFade();
+    try { audio.pause(); } catch { /* ignore */ }
+    try { audio.currentTime = currentTime; } catch { /* ignore */ }
+    try { audio.volume = 0; } catch { /* ignore */ }
+    const p = audio.play();
+    if (p) {
+      p.then(() => {
+        playingRef.current = true;
+        fadeTimerRef.current = setInterval(() => {
+          if (audio.volume < targetVolume - 0.001) {
+            audio.volume = Math.min(targetVolume, parseFloat((audio.volume + 0.06).toFixed(3)));
+          } else {
+            try { audio.volume = targetVolume; } catch { /* ignore */ }
+            clearFade();
+          }
+        }, 70);
+      }).catch(() => {});
+    }
+  }, [getAudio, clearFade]);
+
   const isPlaying = () => playingRef.current;
 
-  return { fadeIn, fadeOut, stop, toggle, isPlaying, unlock };
+  return { fadeIn, fadeOut, stop, toggle, isPlaying, unlock, playMuted, refreshAfterInterruption };
 }

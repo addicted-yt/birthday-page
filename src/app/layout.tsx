@@ -18,6 +18,9 @@ export default function RootLayout({
         {/* 预加载结尾幕蛋糕 emoji，避免 demo/预览页首次加载慢 */}
         <link rel="preload" href="/emoji/birthday.png" as="image" />
         <link rel="preload" href="/emoji/gift.png" as="image" />
+        <link rel="preload" href="/emoji/balloon.png" as="image" />
+        <link rel="preload" href="/emoji/confetti_ball.png" as="image" />
+        <link rel="preload" href="/emoji/tada.png" as="image" />
       </head>
       <body className="min-h-full bg-[#080d1a] text-[#e8e8f0]">
         {children}

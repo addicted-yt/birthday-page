@@ -6,6 +6,7 @@ import { springGentle } from "@/lib/animationPresets";
 interface Scene4_5CandleProps {
   onBlown: () => void;
   onEnter: () => void;
+  onMicEnded?: () => void;
   onMicPromptChange?: (active: boolean) => void;
 }
 
@@ -220,7 +221,7 @@ function CakeSVG({ phase, showSmoke }: { phase: string; showSmoke: boolean }) {
   );
 }
 
-export function Scene4_5Candle({ onBlown, onEnter, onMicPromptChange }: Scene4_5CandleProps) {
+export function Scene4_5Candle({ onBlown, onEnter, onMicEnded, onMicPromptChange }: Scene4_5CandleProps) {
   const sectionRef = useRef<HTMLElement>(null);
   const isTouchDevice =
     typeof window !== "undefined" &&
@@ -248,13 +249,15 @@ export function Scene4_5Candle({ onBlown, onEnter, onMicPromptChange }: Scene4_5
   const animFrameRef = useRef<number>(0);
   const onEnterRef = useRef(onEnter);
   const onBlownRef = useRef(onBlown);
+  const onMicEndedRef = useRef(onMicEnded);
   const onMicPromptChangeRef = useRef(onMicPromptChange);
 
   useEffect(() => {
     onEnterRef.current = onEnter;
     onBlownRef.current = onBlown;
+    onMicEndedRef.current = onMicEnded;
     onMicPromptChangeRef.current = onMicPromptChange;
-  }, [onEnter, onBlown, onMicPromptChange]);
+  }, [onEnter, onBlown, onMicEnded, onMicPromptChange]);
 
   const triggerBlown = useCallback(() => {
     if (hasBlownRef.current) return;
@@ -263,6 +266,7 @@ export function Scene4_5Candle({ onBlown, onEnter, onMicPromptChange }: Scene4_5
     cancelAnimationFrame(animFrameRef.current);
     micStreamRef.current?.getTracks().forEach((track) => track.stop());
     micStreamRef.current = null;
+    onMicEndedRef.current?.();
     setPhase("blown");
     setShowHint(false);
     setShowMicNotice(false);
@@ -298,9 +302,9 @@ export function Scene4_5Candle({ onBlown, onEnter, onMicPromptChange }: Scene4_5
         if (hasBlownRef.current) return;
         analyser.getByteFrequencyData(samples);
         const avg = samples.reduce((sum, value) => sum + value, 0) / samples.length;
-        if (avg > 62) {
+        if (avg > 52) {
           loudCount += 1;
-          if (loudCount >= 4) {
+          if (loudCount >= 3) {
             triggerBlown();
             stream.getTracks().forEach((track) => track.stop());
             micStreamRef.current = null;
