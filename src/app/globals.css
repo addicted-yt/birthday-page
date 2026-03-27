@@ -39,6 +39,16 @@ body {
   position: relative;
 }
 
+/* 移动端：强制每次只吸附到下一个 snap 点，防止快速滑动跳过 */
+@media (hover: none) and (pointer: coarse) {
+  .scroll-snap-start {
+    scroll-snap-stop: always;
+  }
+  .scroll-snap-y {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 /* Global scrollbar — subtle, minimal */
 ::-webkit-scrollbar {
   width: 2px;

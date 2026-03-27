@@ -88,6 +88,9 @@ export function Step4GiftLetter({
           礼物信
         </h2>
         <p className="text-white/45 mt-2 tracking-wider" style={{ fontSize: "clamp(0.75rem, 1.3vw, 0.9rem)" }}>可以修改成你的话</p>
+        <p style={{ fontSize: "0.62rem", color: "rgba(255,255,255,0.25)", letterSpacing: "0.06em", marginTop: "6px" }}>
+          建议先在备忘录写好再粘贴过来，返回修改时内容不会保留
+        </p>
       </div>
 
       {/* Alignment toggle */}

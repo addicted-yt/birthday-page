@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { CreateFlowState, CreateStep, BirthdayData } from "@/types/birthday";
 import { springGentle, springPress } from "@/lib/animationPresets";
 import { encodeBirthdayData } from "@/lib/urlEncoding";
+import { idbPut, uploadImageToR2 } from "@/lib/imageStorage";
 import { BrandFooter } from "@/components/landing/BrandFooter";
 import { PageTransitionOverlay } from "@/components/ui/PageTransitionOverlay";
 import { Step1Name } from "./Step1Name";
@@ -85,24 +86,63 @@ export function StepFlow({ restoreSid }: { restoreSid?: string | null }) {
     setState((s) => ({ ...s, step: Math.max(1, s.step - 1) as CreateStep }));
   const goToStep = (step: CreateStep) => setState((s) => ({ ...s, step }));
 
-  const buildUrl = () => {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  /**
+   * 上传所有图片到 R2 + IndexedDB，返回带 imageKey 的数据
+   * 任意一张上传失败则抛出错误，阻止生成分享链接（不静默降级）
+   */
+  const prepareImages = async (): Promise<{ cardPhotos: typeof state.cardPhotos; giftImages: typeof state.giftImages }> => {
+    const cardPhotos = await Promise.all(
+      state.cardPhotos.map(async (p) => {
+        if (!p.dataUrl) return p;
+        // 存入本地 IndexedDB（创建者永久可用）
+        const localKey = `card-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+        await idbPut(localKey, p.dataUrl);
+        // 上传到 R2（收件人通过链接访问），失败则抛出
+        const imageKey = await uploadImageToR2(p.dataUrl);
+        return { ...p, imageKey };
+      })
+    );
+    const giftImages = await Promise.all(
+      state.giftImages.map(async (g) => {
+        if (!g.dataUrl) return g;
+        const localKey = `gift-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+        await idbPut(localKey, g.dataUrl);
+        const imageKey = await uploadImageToR2(g.dataUrl);
+        return { ...g, imageKey };
+      })
+    );
+    return { cardPhotos, giftImages };
+  };
+
+  const buildUrl = (cardPhotos: typeof state.cardPhotos, giftImages: typeof state.giftImages) => {
     const { d, sid, name } = encodeBirthdayData({
       v: 1,
       name: state.name,
-      cardPhotos: state.cardPhotos,
+      cardPhotos,
       giftLetter: state.giftLetter,
       letterAlign: state.letterAlign,
-      giftImages: state.giftImages,
+      giftImages,
       placeholderPhrases: state.placeholderPhrases,
       placeholderStyles: state.placeholderStyles,
     });
     return { d, sid, name, url: `${window.location.origin}/result?d=${d}&sid=${sid}&name=${name}` };
   };
 
-  const handlePreview = () => {
-    const { d, sid, name } = buildUrl();
-    setNavigatingAway(true);
-    setTimeout(() => router.push(`/result?d=${d}&sid=${sid}&name=${name}&creator=1`), 380);
+  const handlePreview = async () => {
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const { cardPhotos, giftImages } = await prepareImages();
+      const { d, sid, name } = buildUrl(cardPhotos, giftImages);
+      setNavigatingAway(true);
+      setTimeout(() => router.push(`/result?d=${d}&sid=${sid}&name=${name}&creator=1`), 380);
+    } catch {
+      setUploadError("图片上传失败，请检查网络后重试");
+      setUploading(false);
+    }
   };
 
   const showGoToStep = hasReachedPreview.current;
@@ -243,6 +283,8 @@ export function StepFlow({ restoreSid }: { restoreSid?: string | null }) {
               onPreview={handlePreview}
               onBack={goBack}
               onGoToStep={goToStep}
+              uploading={uploading}
+              uploadError={uploadError}
             />
           )}
         </motion.div>

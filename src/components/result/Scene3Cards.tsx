@@ -10,7 +10,6 @@ import {
 import { useState, useCallback, useRef, useEffect } from "react";
 import { CardPhoto } from "@/types/birthday";
 import { springGentle } from "@/lib/animationPresets";
-import { useLongPress } from "@/hooks/useLongPress";
 
 // ─── 展开态浮层 ──────────────────────────────────────────────────────
 interface ExpandedOverlayProps {
@@ -160,7 +159,7 @@ function ExpandedOverlay({ photo, index, onCollapse, onCollapseToFan }: Expanded
       />
       <motion.div
         className="fixed z-[100]"
-        style={{ width: "min(340px, 80vw)", aspectRatio: "4/5", top: "50%", left: "50%" }}
+        style={{ width: "min(340px, 80vw, 60dvh)", aspectRatio: "4/5", top: "50%", left: "50%" }}
         initial={{ x: "-50%", y: "-50%", scale: 0.7, opacity: 0, filter: "blur(14px)", rotate: -3 }}
         animate={{ x: "-50%", y: "-50%", scale: 1, opacity: 1, filter: "blur(0px)", rotate: 0 }}
         exit={{ x: "-50%", y: "-38%", scale: 0.82, opacity: 0, filter: "blur(6px)", rotate: 2 }}
@@ -207,13 +206,14 @@ interface CardItemProps {
   expandedY: number;
   expandedRotate: number;
   captionBright: boolean;
+  isMobile: boolean;
   onExpand: () => void;
 }
 
 function CardItem({
   photo, index, total, isHovered,
   expandedX, expandedY, expandedRotate,
-  captionBright, onExpand,
+  captionBright, isMobile, onExpand,
 }: CardItemProps) {
   const rawX = useMotionValue(0);
   const rawY = useMotionValue(0);
@@ -225,6 +225,19 @@ function CardItem({
   const zIndex = 20 + index;
   const baseRotate = (index - (total - 1) / 2) * 5;
 
+  // 移动端：区分 tap 和 swipe，swipe 不触发展开；长按触发展开
+  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+  const isTap = useRef(true);
+
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    if ("ontouchstart" in window) {
+      // 移动端：阻止冒泡（避免触发容器 toggle），直接展开大图
+      e.stopPropagation();
+      if (!isTap.current) return;
+    }
+    onExpand();
+  }, [onExpand]);
+
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     rawX.set((e.clientX - rect.left) / rect.width - 0.5);
@@ -235,8 +248,27 @@ function CardItem({
     rawX.set(0); rawY.set(0);
   }, [rawX, rawY]);
 
-  const longPress = useLongPress(() => onExpand(), 500);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const handleTouchStartCard = useCallback((e: React.TouchEvent) => {
+    e.stopPropagation(); // 阻止冒泡到容器，防止 toggle 扇形
+    touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    isTap.current = true;
+  }, []);
+
+  const handleTouchMoveCard = useCallback((e: React.TouchEvent) => {
+    if (!touchStartPos.current) return;
+    const dx = Math.abs(e.touches[0].clientX - touchStartPos.current.x);
+    const dy = Math.abs(e.touches[0].clientY - touchStartPos.current.y);
+    if (dx > 10 || dy > 10) {
+      isTap.current = false;
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    }
+  }, []);
+
+  const handleTouchEndCard = useCallback(() => {
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+  }, []);
   const animateState: TargetAndTransition = isHovered
     ? { x: expandedX, y: expandedY, rotate: expandedRotate, scale: 1.03 }
     : { x: 0, y: 0, rotate: baseRotate, scale: 1 };
@@ -244,13 +276,16 @@ function CardItem({
   return (
     <motion.div
       className="absolute cursor-pointer"
-      style={{ width: "min(240px, 58vw)", aspectRatio: "4/5", zIndex }}
+      style={{ width: isMobile ? "min(160px, 42vw)" : "min(240px, 58vw)", aspectRatio: "4/5", zIndex }}
       animate={animateState}
       transition={springGentle}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      onClick={onExpand}
-      {...longPress}
+      onClick={handleClick}
+      onTouchStart={handleTouchStartCard}
+      onTouchMove={handleTouchMoveCard}
+      onTouchEnd={handleTouchEndCard}
+      onTouchCancel={handleTouchEndCard}
     >
       <motion.div
         className="w-full h-full rounded-2xl overflow-hidden relative"
@@ -280,8 +315,17 @@ export function Scene3Cards({ cardPhotos }: Scene3CardsProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [brightSet, setBrightSet] = useState<Set<number>>(new Set());
   const [containerW, setContainerW] = useState(0);
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
   const touchRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  // 移动端：记录触摸起点，用于区分点击和滑动
+  const containerTouchStart = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsMobileDevice(window.matchMedia("(hover: none) and (pointer: coarse)").matches);
+    }
+  }, []);
 
   // 监听容器宽度
   useEffect(() => {
@@ -295,17 +339,18 @@ export function Scene3Cards({ cardPhotos }: Scene3CardsProps) {
     return () => obs.disconnect();
   }, []);
 
-  // 扇形展开：动态间距，卡片宽约 240px，留边距防超屏
+  // 扇形展开：动态间距，移动端卡片更小以适应屏幕
   const getExpandedProps = (i: number, total: number) => {
     const center = (total - 1) / 2;
     const offset = i - center;
-    // 卡片宽 min(240, 58vw)，这里用 containerW 算可用展开宽度
-    // 每侧留约 20px 边距，总可用宽 = containerW - 40
-    const cardW = Math.min(240, containerW * 0.58);
+    const isMobile = typeof window !== "undefined" && window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+    // 移动端：最大宽度 160px，系数 0.42；桌面：最大 240px，系数 0.58
+    const cardW = isMobile
+      ? Math.min(160, containerW * 0.42)
+      : Math.min(240, containerW * 0.58);
     const usable = containerW - cardW - 40;
-    // 默认间距 200，但不超过可用宽 / 半span
     const maxSpacing = total > 1 ? usable / (total - 1) : 0;
-    const spacing = Math.min(200, maxSpacing);
+    const spacing = Math.min(isMobile ? 140 : 200, maxSpacing);
     const expandedX = offset * spacing;
     const rotDeg = offset * 6;
     const expandedY = Math.abs(rotDeg) * 1.8;
@@ -317,8 +362,37 @@ export function Scene3Cards({ cardPhotos }: Scene3CardsProps) {
     setBrightSet((prev) => new Set(prev).add(i));
   };
 
-  const handleTouchStart = () => {
-    if (!isHovered) { touchRef.current = true; setIsHovered(true); }
+  const handleContainerTouchStart = (e: React.TouchEvent) => {
+    containerTouchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  };
+
+  const handleContainerTouchEnd = (e: React.TouchEvent) => {
+    if (!containerTouchStart.current) return;
+    const t = e.changedTouches[0];
+    const dx = Math.abs(t.clientX - containerTouchStart.current.x);
+    const dy = Math.abs(t.clientY - containerTouchStart.current.y);
+    containerTouchStart.current = null;
+
+    // 上下滑动超过 10px → 是翻页手势，不触发展开
+    if (dy > 10) return;
+    // 左右位移太大也忽略
+    if (dx > 30) return;
+
+    // 判断点击位置是否在卡片叠放中心区域 ± padding 内
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const relX = t.clientX - rect.left;
+    const relY = t.clientY - rect.top;
+    const cx = rect.width / 2;
+    const cy = rect.height / 2;
+    // 卡片堆的近似尺寸 + padding 60px
+    const hitW = Math.min(160, rect.width * 0.42) * 1.2 + 60;
+    const hitH = Math.min(260, rect.height) * 0.9 + 60;
+    if (Math.abs(relX - cx) > hitW / 2 || Math.abs(relY - cy) > hitH / 2) return;
+
+    touchRef.current = true;
+    setIsHovered((v) => !v);
   };
 
   const expandedPhoto = expandedIndex !== null ? cardPhotos[expandedIndex] : null;
@@ -352,20 +426,24 @@ export function Scene3Cards({ cardPhotos }: Scene3CardsProps) {
         viewport={{ once: true }}
         transition={{ ...springGentle, delay: 0.6 }}
       >
-        {isHovered ? "点击查看" : "触碰展开"}
+        {isMobileDevice
+          ? (isHovered ? "点击卡片周围 关闭" : "点击卡片周围 展开")
+          : (isHovered ? "点击查看" : "触碰展开")
+        }
       </motion.p>
 
       <motion.div
         ref={containerRef}
         className="relative flex items-center justify-center"
-        style={{ width: "min(900px, 96vw)", height: "min(380px, 72vw)" }}
+        style={{ width: "min(900px, 96vw)", height: isMobileDevice ? "min(260px, 55vw)" : "min(380px, 72vw)" }}
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.4 }}
         transition={{ ...springGentle, delay: 0.2 }}
         onHoverStart={() => setIsHovered(true)}
         onHoverEnd={() => { if (!touchRef.current) setIsHovered(false); }}
-        onTouchStart={handleTouchStart}
+        onTouchStart={isMobileDevice ? handleContainerTouchStart : undefined}
+        onTouchEnd={isMobileDevice ? handleContainerTouchEnd : undefined}
       >
         {cardPhotos.map((photo, i) => {
           const { expandedX, expandedY, expandedRotate } = getExpandedProps(i, cardPhotos.length);
@@ -380,6 +458,7 @@ export function Scene3Cards({ cardPhotos }: Scene3CardsProps) {
               expandedY={expandedY}
               expandedRotate={expandedRotate}
               captionBright={brightSet.has(i)}
+              isMobile={isMobileDevice}
               onExpand={() => handleExpand(i)}
             />
           );

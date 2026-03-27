@@ -17,9 +17,17 @@ export function encodeBirthdayData(data: BirthdayData): {
     name: data.name,
     giftLetter: data.giftLetter,
     letterAlign: data.letterAlign,
-    cardCaptions: data.cardPhotos.map((p) => p.caption || ""),
-    giftImageCount: data.giftImages.length,
-    cardPhotoCount: data.cardPhotos.length,
+    // 卡片文字 + 样式全量（不含图片 dataUrl，图片留在 sessionStorage）
+    cardPhotos: data.cardPhotos.map((p) => ({
+      caption: p.caption || "",
+      captionPosition: p.captionPosition,
+      captionAlign: p.captionAlign,
+      captionSize: p.captionSize,
+      captionColor: p.captionColor,
+      captionFont: p.captionFont,
+      imageKey: p.imageKey,   // R2 key，有则存入URL
+    })),
+    giftImages: data.giftImages.map((g) => ({ imageKey: g.imageKey })),
     placeholderPhrases: data.placeholderPhrases,
     placeholderStyles: data.placeholderStyles,
   };
@@ -39,10 +47,50 @@ export function decodeBirthdayData(
       LZString.decompressFromEncodedURIComponent(d) || "{}"
     );
 
+    // URL 中的 d 参数是文字内容的权威来源，始终优先使用
+    // sid 仅用于从 sessionStorage 补充图片 dataUrl（dataUrl 太大无法放进 URL）
+    const cardPhotos = Array.from(
+      { length: (textData.cardPhotos || []).length },
+      (_: unknown, i: number) => ({
+        dataUrl: "",
+        imageKey: textData.cardPhotos?.[i]?.imageKey,
+        caption: textData.cardPhotos?.[i]?.caption || "",
+        captionPosition: textData.cardPhotos?.[i]?.captionPosition,
+        captionAlign: textData.cardPhotos?.[i]?.captionAlign,
+        captionSize: textData.cardPhotos?.[i]?.captionSize,
+        captionColor: textData.cardPhotos?.[i]?.captionColor,
+        captionFont: textData.cardPhotos?.[i]?.captionFont,
+      })
+    );
+
+    const giftImages = Array.from(
+      { length: (textData.giftImages || []).length },
+      (_: unknown, i: number) => ({
+        dataUrl: "",
+        imageKey: textData.giftImages?.[i]?.imageKey,
+      })
+    );
+
+    // 用 sid 从 sessionStorage 补充 dataUrl（仅创作者本设备有效）
     if (sid && typeof window !== "undefined") {
       const stored = sessionStorage.getItem(sid);
       if (stored) {
-        return JSON.parse(stored) as BirthdayData;
+        try {
+          const local = JSON.parse(stored) as BirthdayData;
+          // 只补充 dataUrl，不覆盖任何文字/样式字段
+          local.cardPhotos?.forEach((lp, i) => {
+            if (cardPhotos[i] && lp.dataUrl) {
+              cardPhotos[i].dataUrl = lp.dataUrl;
+            }
+          });
+          local.giftImages?.forEach((lg, i) => {
+            if (giftImages[i] && lg.dataUrl) {
+              giftImages[i].dataUrl = lg.dataUrl;
+            }
+          });
+        } catch {
+          // sessionStorage 数据损坏，忽略
+        }
       }
     }
 
@@ -53,17 +101,8 @@ export function decodeBirthdayData(
       letterAlign: textData.letterAlign,
       placeholderPhrases: textData.placeholderPhrases,
       placeholderStyles: textData.placeholderStyles,
-      cardPhotos: Array.from(
-        { length: textData.cardPhotoCount || 0 },
-        (_: unknown, i: number) => ({
-          dataUrl: "",
-          caption: textData.cardCaptions?.[i] || "",
-        })
-      ),
-      giftImages: Array.from(
-        { length: textData.giftImageCount || 0 },
-        () => ({ dataUrl: "" })
-      ),
+      cardPhotos,
+      giftImages,
     };
   } catch {
     return null;

@@ -15,14 +15,29 @@ interface GiftParticle {
 
 interface Scene4GiftProps {
   onOpen: () => void;
+  onEnter?: () => void;
 }
 
-export function Scene4Gift({ onOpen }: Scene4GiftProps) {
+export function Scene4Gift({ onOpen, onEnter }: Scene4GiftProps) {
   const [opened, setOpened] = useState(false);
   const [particles, setParticles] = useState<GiftParticle[]>([]);
   const hasOpened = useRef(false);
   const sectionRef = useRef<HTMLElement>(null);
   const touchStartY = useRef(0);
+  const onEnterRef = useRef(onEnter);
+  onEnterRef.current = onEnter;
+
+  // 进入视口时通知外部（用于停止 birthdaySong）
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) onEnterRef.current?.(); },
+      { threshold: 0.5 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
   // 未打开时阻止向下滚动（wheel + touchmove）
   useEffect(() => {
@@ -75,7 +90,7 @@ export function Scene4Gift({ onOpen }: Scene4GiftProps) {
     <section
       ref={sectionRef}
       className="scroll-snap-start flex items-center justify-center relative"
-      style={{ zIndex: 10 }}
+      style={{ zIndex: 10, touchAction: opened ? "auto" : "none" }}
     >
       <div className="flex flex-col items-center gap-8 relative">
         {/* 粒子 */}

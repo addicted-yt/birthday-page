@@ -1,5 +1,6 @@
 export interface CardPhoto {
   dataUrl: string;
+  imageKey?: string;        // R2 存储 key，分享时用
   caption?: string;
   captionPosition?: "top" | "center" | "bottom";
   captionAlign?: "left" | "center" | "right";
@@ -10,6 +11,7 @@ export interface CardPhoto {
 
 export interface GiftImage {
   dataUrl: string;
+  imageKey?: string;        // R2 存储 key，分享时用
 }
 
 export interface PlaceholderCardStyle {

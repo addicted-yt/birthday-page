@@ -351,10 +351,16 @@ export function Scene4_5Candle({ onBlown, onEnter }: Scene4_5CandleProps) {
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 256;
       source.connect(analyser);
+      // 注意：analyser 不 connect 到 ctx.destination，避免麦克风声音外放
+      // iOS 上 getUserMedia 会把音频会话切到 PlayAndRecord 模式（音量变大），
+      // 挂起 ctx 可减轻该影响
+      ctx.suspend().catch(() => {});
       const data = new Uint8Array(analyser.frequencyBinCount);
       let loudCount = 0;
       const check = () => {
         if (hasBlownRef.current) return;
+        // resume ctx 只在需要读数据时，读完再 suspend
+        if (ctx.state === "suspended") ctx.resume().catch(() => {});
         analyser.getByteFrequencyData(data);
         const avg = data.reduce((a, b) => a + b, 0) / data.length;
         if (avg > 62) {
@@ -424,7 +430,7 @@ export function Scene4_5Candle({ onBlown, onEnter }: Scene4_5CandleProps) {
     <section
       ref={sectionRef}
       className="scroll-snap-start"
-      style={{ zIndex: 10, height: "100dvh", display: "flex", alignItems: "center", justifyContent: "center" }}
+      style={{ zIndex: 10, height: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", touchAction: phase === "done" ? "auto" : "none" }}
     >
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "clamp(1.6rem, 5vw, 2.8rem)" }}>
 

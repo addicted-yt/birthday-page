@@ -21,24 +21,37 @@ export function Step2Photos({ photos, onChange, onNext, onBack, showGoToStep, on
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [cropIndex, setCropIndex] = useState<number>(-1);
   const [sizeError, setSizeError] = useState(false);
+  // Queue of remaining files to crop after the current one
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
-  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const toProcess = files.slice(0, 5 - photos.length);
-    if (toProcess.length === 0) return;
-    const file = toProcess[0];
+  const openNextFile = useCallback(async (files: File[], baseCount: number) => {
+    if (files.length === 0) return;
+    const [file, ...rest] = files;
     if (file.size > MAX_FILE_BYTES) {
       setSizeError(true);
       setTimeout(() => setSizeError(false), 3000);
-      e.target.value = "";
+      // Skip this file, try next
+      openNextFile(rest, baseCount);
       return;
     }
     setSizeError(false);
     const base64 = await imageFileToBase64(file);
     setCropSrc(base64);
-    setCropIndex(photos.length);
+    // cropIndex = baseCount + how many from this batch have been accepted so far
+    // We track accepted count via pendingFiles length difference, but simpler:
+    // just use photos.length at the moment of opening — photos state updates after each done
+    setCropIndex(baseCount);
+    setPendingFiles(rest);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const slots = 5 - photos.length;
+    const toProcess = files.slice(0, slots);
     e.target.value = "";
-  }, [photos]);
+    if (toProcess.length === 0) return;
+    await openNextFile(toProcess, photos.length);
+  }, [photos, openNextFile]);
 
   const handleCropDone = useCallback((dataUrl: string) => {
     const updated = [...photos];
@@ -50,7 +63,13 @@ export function Step2Photos({ photos, onChange, onNext, onBack, showGoToStep, on
     onChange(updated);
     setCropSrc(null);
     setCropIndex(-1);
-  }, [photos, cropIndex, onChange]);
+    // Open next pending file; new photos count = updated.length
+    if (pendingFiles.length > 0 && updated.length < 5) {
+      openNextFile(pendingFiles, updated.length);
+    } else {
+      setPendingFiles([]);
+    }
+  }, [photos, cropIndex, onChange, pendingFiles, openNextFile]);
 
   const handleRemove = (i: number) => {
     onChange(photos.filter((_, idx) => idx !== i));
@@ -62,7 +81,7 @@ export function Step2Photos({ photos, onChange, onNext, onBack, showGoToStep, on
         <ImageCropper
           src={cropSrc}
           onDone={handleCropDone}
-          onCancel={() => { setCropSrc(null); setCropIndex(-1); }}
+          onCancel={() => { setCropSrc(null); setCropIndex(-1); setPendingFiles([]); }}
         />
       )}
 
@@ -100,7 +119,7 @@ export function Step2Photos({ photos, onChange, onNext, onBack, showGoToStep, on
             className="relative bg-white/3 border border-dashed border-white/15 rounded-lg overflow-hidden cursor-pointer hover:border-white/30 transition-colors flex items-center justify-center"
             style={{ aspectRatio: "4/5" }}
           >
-            <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+            <input type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
             <span className="text-white/25 text-2xl font-light">+</span>
           </label>
         )}

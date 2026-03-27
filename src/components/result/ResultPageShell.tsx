@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import { BirthdayData, CardPhoto } from "@/types/birthday";
 import { decodeBirthdayData } from "@/lib/urlEncoding";
+import { idbGet, fetchImageFromR2 } from "@/lib/imageStorage";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { useFirstInteraction } from "@/hooks/useFirstInteraction";
 import { springGentle } from "@/lib/animationPresets";
@@ -49,6 +50,7 @@ export function ResultPageShell({
 }: ResultPageShellProps) {
   const router = useRouter();
   const [data, setData] = useState<BirthdayData | null>(propData || null);
+  const [decodeError, setDecodeError] = useState(false);
   const [navigatingAway, setNavigatingAway] = useState(false);
   const [candleBlown, setCandleBlown] = useState(false);
   const [giftOpened, setGiftOpened] = useState(false);
@@ -78,14 +80,65 @@ export function ResultPageShell({
     // 无需补播逻辑：音乐由用户滚动手势触发，不受 autoplay 策略限制
   }, []));
 
+  // 移动端：首次 touchstart 解锁音频（iOS/微信 WebView 需要在手势内调用 play）
+  useEffect(() => {
+    if (typeof window === "undefined" || !("ontouchstart" in window)) return;
+    const unlock = () => {
+      birthdaySong.unlock();
+      pianoMusic.unlock();
+    };
+    document.addEventListener("touchstart", unlock, { once: true, passive: true });
+    return () => document.removeEventListener("touchstart", unlock);
+  }, [birthdaySong, pianoMusic]);
+
   useEffect(() => {
     if (!propData && encodedData) {
       const decoded = decodeBirthdayData(encodedData, sessionId);
-      setData(decoded);
+      if (decoded) {
+        setData(decoded);
+      } else {
+        // 解码失败：尝试用 URL name 参数构造最小数据，至少能显示姓名
+        const fallbackName = encodedName ? (() => { try { return decodeURIComponent(encodedName); } catch { return encodedName; } })() : "";
+        setData({
+          v: 1,
+          name: fallbackName,
+          giftLetter: "",
+          cardPhotos: [],
+          giftImages: [],
+        } as BirthdayData);
+        setDecodeError(true);
+      }
     }
-  }, [encodedData, sessionId, propData]);
+  }, [encodedData, sessionId, propData, encodedName]);
 
-  // 进入蜡烛幕：播放生日快乐歌
+  // 解码完成后，异步填充图片 dataUrl（先查 IndexedDB，再从 R2 拉取）
+  useEffect(() => {
+    if (!data) return;
+    const hasImageKeys =
+      data.cardPhotos.some((p) => p.imageKey && !p.dataUrl) ||
+      data.giftImages.some((g) => g.imageKey && !g.dataUrl);
+    if (!hasImageKeys) return;
+
+    let cancelled = false;
+    (async () => {
+      const cardPhotos = await Promise.all(
+        data.cardPhotos.map(async (p) => {
+          if (p.dataUrl || !p.imageKey) return p;
+          const url = await idbGet(p.imageKey) ?? await fetchImageFromR2(p.imageKey);
+          return url ? { ...p, dataUrl: url } : p;
+        })
+      );
+      const giftImages = await Promise.all(
+        data.giftImages.map(async (g) => {
+          if (g.dataUrl || !g.imageKey) return g;
+          const url = await idbGet(g.imageKey) ?? await fetchImageFromR2(g.imageKey);
+          return url ? { ...g, dataUrl: url } : g;
+        })
+      );
+      if (!cancelled) setData((prev) => prev ? { ...prev, cardPhotos, giftImages } : prev);
+    })();
+    return () => { cancelled = true; };
+  }, [data?.cardPhotos.map(p => p.imageKey).join(","), data?.giftImages.map(g => g.imageKey).join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
   const handleCandleEnter = useCallback(() => {
     if (birthdaySongStarted.current) return;
     birthdaySongStarted.current = true;
@@ -101,6 +154,13 @@ export function ResultPageShell({
     requestAnimationFrame(() => {
       giftRef.current?.scrollIntoView({ behavior: "smooth" });
     });
+  }, [birthdaySong]);
+
+  // 进入礼物幕：确保 birthdaySong 停止（处理快速滑动绕过蜡烛幕的情况）
+  const handleGiftEnter = useCallback(() => {
+    if (birthdaySongStarted.current && birthdaySong.isPlaying()) {
+      birthdaySong.fadeOut();
+    }
   }, [birthdaySong]);
 
   const handleGiftOpen = useCallback(() => {
@@ -159,6 +219,11 @@ export function ResultPageShell({
         <p className="text-white/20 text-xs tracking-[0.4em]">loading</p>
       </div>
     );
+  }
+
+  // 解码失败时显示友好提示（移动端 URL 截断等情况）
+  if (decodeError && !data.giftLetter && data.cardPhotos.length === 0) {
+    // 仍然继续渲染，只是内容会是空的，不卡在 loading
   }
 
   const cardPhotos = (() => {
@@ -235,7 +300,7 @@ export function ResultPageShell({
 
       {/* 礼物幕（蜡烛吹灭后才能滚动到，未吹灭时仍存在但被蜡烛幕阻挡） */}
       <div ref={giftRef}>
-        <Scene4Gift onOpen={handleGiftOpen} />
+        <Scene4Gift onOpen={handleGiftOpen} onEnter={handleGiftEnter} />
       </div>
 
       <div ref={scene5Ref}>

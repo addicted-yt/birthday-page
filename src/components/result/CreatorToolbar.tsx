@@ -27,7 +27,8 @@ export function CreatorToolbar({ shareUrl, sessionId, onNavigateAway }: CreatorT
       document.body.removeChild(el);
     }
     setShowToast(true);
-    setTimeout(() => setShowToast(false), 3500);
+    const timer = setTimeout(() => setShowToast(false), 60000);
+    return () => clearTimeout(timer);
   };
 
   return (
@@ -101,13 +102,28 @@ export function CreatorToolbar({ shareUrl, sessionId, onNavigateAway }: CreatorT
                 backdropFilter: "blur(20px)",
                 WebkitBackdropFilter: "blur(20px)",
                 boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+                position: "relative",
+                minWidth: "220px",
               }}
             >
+              {/* × 关闭按钮 */}
+              <button
+                onClick={() => setShowToast(false)}
+                style={{
+                  position: "absolute", top: 8, right: 10,
+                  background: "none", border: "none", cursor: "pointer",
+                  color: "rgba(255,255,255,0.30)", fontSize: "1rem", lineHeight: 1,
+                  padding: "2px 4px",
+                }}
+              >×</button>
               <p className="text-white/90 text-sm font-light tracking-wider">
                 链接已复制
               </p>
               <p className="text-white/35 text-xs tracking-wide">
                 快分享给 TA 看看吧 ✨
+              </p>
+              <p style={{ fontSize: "0.6rem", color: "rgba(255,255,255,0.22)", letterSpacing: "0.06em", marginTop: "4px", textAlign: "center", lineHeight: 1.6 }}>
+                图片将在 15 天后从云端自动清除<br />请尽快分享，以免 TA 错过
               </p>
             </div>
           </motion.div>

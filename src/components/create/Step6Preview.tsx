@@ -11,6 +11,8 @@ interface Step6PreviewProps {
   onPreview: () => void;
   onBack: () => void;
   onGoToStep: (step: CreateStep) => void;
+  uploading?: boolean;
+  uploadError?: string | null;
 }
 
 const STEP_LABELS: { step: CreateStep; label: string }[] = [
@@ -167,7 +169,7 @@ function PhotoCardItem({ photo }: { photo: CardPhoto }) {
   );
 }
 
-export function Step6Preview({ state, onPreview, onBack, onGoToStep }: Step6PreviewProps) {
+export function Step6Preview({ state, onPreview, onBack, onGoToStep, uploading, uploadError }: Step6PreviewProps) {
   const [showSteps, setShowSteps] = useState(false);
 
   const hasPhotos = state.cardPhotos.length > 0;
@@ -236,8 +238,23 @@ export function Step6Preview({ state, onPreview, onBack, onGoToStep }: Step6Prev
       </motion.p>
 
       <div className="flex flex-col gap-3 w-full items-center">
-        <SpringButton variant="primary" onClick={onPreview} className="w-full">
-          预览效果
+        {uploadError && (
+          <p style={{
+            fontSize: "0.75rem",
+            color: "rgba(255,120,120,0.9)",
+            letterSpacing: "0.06em",
+            textAlign: "center",
+            padding: "8px 14px",
+            borderRadius: 8,
+            border: "1px solid rgba(255,80,80,0.25)",
+            background: "rgba(255,60,60,0.08)",
+            width: "100%",
+          }}>
+            {uploadError}
+          </p>
+        )}
+        <SpringButton variant="primary" onClick={onPreview} className="w-full" disabled={uploading}>
+          {uploading ? "上传中…" : "预览效果"}
         </SpringButton>
 
         <SpringButton variant="secondary" onClick={onBack} className="w-full">

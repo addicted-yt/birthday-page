@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CardPhoto, CreateStep, PlaceholderCardStyle } from "@/types/birthday";
 import { SpringButton } from "@/components/ui/SpringButton";
@@ -412,9 +412,10 @@ function DefaultCardPhrases({
                             {(customSlots[i] ?? CUSTOM_SLOT_DEFAULTS).map((hex, si) => (
                               <CustomColorSlot
                                 key={si} hex={hex} selected={color === hexToRgba(hex)}
+                                defaultHex={CUSTOM_SLOT_DEFAULTS[si]}
                                 onPickerChange={(newHex) => updateSlotHex(i, si, newHex)}
                                 onApply={() => updateStyle({ captionColor: hexToRgba((customSlots[i] ?? CUSTOM_SLOT_DEFAULTS)[si]) })}
-                                onCancel={() => updateStyle({ captionColor: undefined })}
+                                onReset={() => updateStyle({ captionColor: hexToRgba(CUSTOM_SLOT_DEFAULTS[si]) })}
                               />
                             ))}
                           </div>
@@ -863,9 +864,10 @@ export function Step3CardText({ photos, onChange, phrases, onPhrasesChange, plac
                                 {slots.map((hex, si) => (
                                   <CustomColorSlot
                                     key={si} hex={hex} selected={color === hexToRgba(hex)}
+                                    defaultHex={CUSTOM_SLOT_DEFAULTS[si]}
                                     onPickerChange={(newHex) => updateSlotHex(i, si, newHex)}
                                     onApply={() => update(i, "captionColor", hexToRgba(slots[si]))}
-                                    onCancel={() => update(i, "captionColor", undefined)}
+                                    onReset={() => update(i, "captionColor", hexToRgba(CUSTOM_SLOT_DEFAULTS[si]))}
                                   />
                                 ))}
                               </div>
@@ -913,62 +915,624 @@ function ColorSwatch({ bg, selected, onClick }: { bg: string; selected: boolean;
       style={{
         width: 22, height: 22, borderRadius: "50%",
         background: bg,
-        border: selected ? "2px solid rgba(255,255,255,0.85)" : "2px solid rgba(255,255,255,0.12)",
+        border: selected ? "3px solid rgba(255,255,255,0.95)" : "2px solid rgba(255,255,255,0.12)",
         cursor: "pointer", flexShrink: 0,
         transition: "border 0.2s ease, box-shadow 0.2s ease",
         boxShadow: selected
-          ? "0 0 0 2px rgba(255,255,255,0.15), 0 2px 8px rgba(0,0,0,0.4)"
+          ? "0 0 0 3px rgba(255,255,255,0.25), 0 2px 8px rgba(0,0,0,0.4)"
           : "0 1px 4px rgba(0,0,0,0.3)",
       }}
     />
   );
 }
 
+// ─── 自定义颜色选择器 ──────────────────────────────────────────────────
+// HSV 颜色空间工具函数
+function hexToHsv(hex: string): [number, number, number] {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const d = max - min;
+  let h = 0;
+  if (d !== 0) {
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (max === g) h = ((b - r) / d + 2) / 6;
+    else h = ((r - g) / d + 4) / 6;
+  }
+  return [h * 360, max === 0 ? 0 : d / max, max];
+}
+
+function hsvToHex(h: number, s: number, v: number): string {
+  h = h / 360;
+  const i = Math.floor(h * 6);
+  const f = h * 6 - i;
+  const p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
+  let r = 0, g = 0, b = 0;
+  switch (i % 6) {
+    case 0: r = v; g = t; b = p; break;
+    case 1: r = q; g = v; b = p; break;
+    case 2: r = p; g = v; b = t; break;
+    case 3: r = p; g = q; b = v; break;
+    case 4: r = t; g = p; b = v; break;
+    case 5: r = v; g = p; b = q; break;
+  }
+  return "#" + [r, g, b].map(x => Math.round(x * 255).toString(16).padStart(2, "0")).join("");
+}
+
+function CustomColorPicker({
+  hex, defaultHex, onChange, onReset, onClose,
+}: {
+  hex: string;
+  defaultHex: string;
+  onChange: (hex: string) => void;
+  onReset: () => void;
+  onClose: () => void;
+}) {
+  const [hsv, setHsv] = useState<[number, number, number]>(() => hexToHsv(hex));
+  const [hexInput, setHexInput] = useState(hex);
+  const [mode, setMode] = useState<"hex" | "rgb">("hex");
+  const [rgb, setRgb] = useState<[number, number, number]>(() => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return [r, g, b];
+  });
+  const [eyedropperActive, setEyedropperActive] = useState(false);
+  const svRef = useRef<HTMLDivElement>(null);
+  const hueRef = useRef<HTMLDivElement>(null);
+  const draggingSv = useRef(false);
+  const draggingHue = useRef(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const isTouchDevice = typeof window !== "undefined" && "ontouchstart" in window;
+
+  // 同步外部 hex 变化
+  useEffect(() => {
+    const h = hexToHsv(hex);
+    setHsv(h);
+    setHexInput(hex);
+    setRgb([parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)]);
+  }, [hex]);
+
+  const applyHex = useCallback((newHex: string) => {
+    const h = hexToHsv(newHex);
+    setHsv(h);
+    setHexInput(newHex);
+    setRgb([parseInt(newHex.slice(1, 3), 16), parseInt(newHex.slice(3, 5), 16), parseInt(newHex.slice(5, 7), 16)]);
+    onChange(newHex);
+  }, [onChange]);
+
+  const currentHex = hsvToHex(hsv[0], hsv[1], hsv[2]);
+
+  // 点击外部关闭
+  useEffect(() => {
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
+  }, [onClose]);
+
+  const updateSv = useCallback((clientX: number, clientY: number) => {
+    const el = svRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const s = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const v = Math.max(0, Math.min(1, 1 - (clientY - rect.top) / rect.height));
+    setHsv(([h]) => [h, s, v]);
+    const newHex = hsvToHex(hsv[0], s, v);
+    setHexInput(newHex);
+    setRgb([parseInt(newHex.slice(1, 3), 16), parseInt(newHex.slice(3, 5), 16), parseInt(newHex.slice(5, 7), 16)]);
+    onChange(newHex);
+  }, [hsv, onChange]);
+
+  const updateHue = useCallback((clientX: number) => {
+    const el = hueRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const h = Math.max(0, Math.min(360, ((clientX - rect.left) / rect.width) * 360));
+    setHsv(([, s, v]) => [h, s, v]);
+    const newHex = hsvToHex(h, hsv[1], hsv[2]);
+    setHexInput(newHex);
+    setRgb([parseInt(newHex.slice(1, 3), 16), parseInt(newHex.slice(3, 5), 16), parseInt(newHex.slice(5, 7), 16)]);
+    onChange(newHex);
+  }, [hsv, onChange]);
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent | TouchEvent) => {
+      const x = "touches" in e ? e.touches[0].clientX : e.clientX;
+      const y = "touches" in e ? e.touches[0].clientY : e.clientY;
+      if (draggingSv.current) updateSv(x, y);
+      if (draggingHue.current) updateHue(x);
+    };
+    const onUp = () => { draggingSv.current = false; draggingHue.current = false; };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    document.addEventListener("touchmove", onMove, { passive: false });
+    document.addEventListener("touchend", onUp);
+    return () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.removeEventListener("touchmove", onMove);
+      document.removeEventListener("touchend", onUp);
+    };
+  }, [updateSv, updateHue]);
+
+  // 吸管功能
+  const abortRef = useRef<AbortController | null>(null);
+  const handleEyedropper = useCallback(async () => {
+    if (!("EyeDropper" in window)) return;
+    const abort = new AbortController();
+    abortRef.current = abort;
+    try {
+      // @ts-expect-error EyeDropper API 尚未进入 TS lib
+      const dropper = new window.EyeDropper();
+      const result = await dropper.open({ signal: abort.signal });
+      applyHex(result.sRGBHex);
+      setEyedropperActive(false);
+    } catch {
+      setEyedropperActive(false);
+    }
+    abortRef.current = null;
+  }, [applyHex]);
+
+  const cancelEyedropper = useCallback(() => {
+    abortRef.current?.abort();
+    setEyedropperActive(false);
+  }, []);
+
+  const hueColor = hsvToHex(hsv[0], 1, 1);
+  const hasEyeDropper = typeof window !== "undefined" && "EyeDropper" in window;
+
+  // 计算 picker 弹出位置，防止溢出视口
+  const [pickerOffset, setPickerOffset] = useState(0);
+  const wrapperRefCallback = useCallback((node: HTMLDivElement | null) => {
+    (wrapperRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    if (!node) return;
+    const rect = node.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const overflow = rect.right - vw + 8;
+    if (overflow > 0) setPickerOffset(-overflow);
+    else if (rect.left < 8) setPickerOffset(8 - rect.left);
+  }, []);
+
+  return (
+    <>
+      {/* 吸管激活时：右上角悬浮提示条 + × 取消按钮，不拦截屏幕点击 */}
+      {eyedropperActive && (
+        <div
+          style={{
+            position: "fixed",
+            top: "clamp(12px, 3vh, 24px)",
+            right: "clamp(12px, 3vw, 24px)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            background: "rgba(14,18,36,0.92)",
+            border: "1px solid rgba(120,180,255,0.35)",
+            borderRadius: 10,
+            padding: "8px 12px 8px 14px",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
+            pointerEvents: "none",
+          }}
+        >
+          <svg width="13" height="13" viewBox="0 0 20 20" fill="none" style={{ flexShrink: 0 }}>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 0 3L8 15l-4 1 1-4 8.5-8.5a2.121 2.121 0 0 1 3 0z" stroke="rgba(120,180,255,0.85)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+            <circle cx="5" cy="15" r="1.2" fill="rgba(120,180,255,0.85)"/>
+          </svg>
+          <span style={{
+            color: "rgba(200,220,255,0.82)",
+            fontSize: "clamp(0.65rem, 1.8vw, 0.78rem)",
+            letterSpacing: "0.08em",
+            whiteSpace: "nowrap",
+          }}>
+            吸管已激活
+          </span>
+          {/* × 按钮：可点击，独立 pointerEvents */}
+          <button
+            onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); cancelEyedropper(); }}
+            onTouchStart={(e) => { e.stopPropagation(); e.preventDefault(); cancelEyedropper(); }}
+            style={{
+              pointerEvents: "auto",
+              marginLeft: 4,
+              width: 20, height: 20,
+              borderRadius: "50%",
+              border: "1px solid rgba(255,255,255,0.2)",
+              background: "rgba(255,255,255,0.08)",
+              color: "rgba(255,255,255,0.65)",
+              cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: "0.75rem",
+              lineHeight: 1,
+              flexShrink: 0,
+              transition: "all 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,80,80,0.25)";
+              (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,160,160,0.9)";
+              (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,80,80,0.4)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.08)";
+              (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.65)";
+              (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.2)";
+            }}
+            title="取消吸管"
+          >
+            ×
+          </button>
+        </div>
+      )}
+      <div
+        ref={wrapperRefCallback}
+        style={{
+          position: "absolute",
+          zIndex: 1000,
+          bottom: "calc(100% + 8px)",
+          left: `calc(50% + ${pickerOffset}px)`,
+          transform: "translateX(-50%)",
+          background: "rgba(14,18,36,0.98)",
+          border: "1px solid rgba(255,255,255,0.15)",
+          borderRadius: 12,
+          padding: "clamp(8px, 2vw, 12px)",
+          width: "clamp(180px, 48vw, 220px)",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+          userSelect: "none",
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+      {/* SV 选择区域 */}
+      <div
+        ref={svRef}
+        style={{
+          width: "100%",
+          height: 120,
+          borderRadius: 8,
+          background: `linear-gradient(to bottom, transparent, black),
+                       linear-gradient(to right, white, ${hueColor})`,
+          position: "relative",
+          cursor: "crosshair",
+          overflow: "hidden",
+        }}
+        onMouseDown={(e) => {
+          draggingSv.current = true;
+          updateSv(e.clientX, e.clientY);
+        }}
+        onTouchStart={(e) => {
+          draggingSv.current = true;
+          updateSv(e.touches[0].clientX, e.touches[0].clientY);
+        }}
+      >
+        <div style={{
+          position: "absolute",
+          left: `${hsv[1] * 100}%`,
+          top: `${(1 - hsv[2]) * 100}%`,
+          transform: "translate(-50%, -50%)",
+          width: 12, height: 12,
+          borderRadius: "50%",
+          border: "2px solid white",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.6)",
+          pointerEvents: "none",
+        }} />
+      </div>
+
+      {/* 色相滑块 */}
+      <div
+        ref={hueRef}
+        style={{
+          marginTop: 8,
+          width: "100%",
+          height: 14,
+          borderRadius: 7,
+          background: "linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)",
+          position: "relative",
+          cursor: "pointer",
+        }}
+        onMouseDown={(e) => {
+          draggingHue.current = true;
+          updateHue(e.clientX);
+        }}
+        onTouchStart={(e) => {
+          draggingHue.current = true;
+          updateHue(e.touches[0].clientX);
+        }}
+      >
+        <div style={{
+          position: "absolute",
+          left: `${(hsv[0] / 360) * 100}%`,
+          top: "50%",
+          transform: "translate(-50%, -50%)",
+          width: 16, height: 16,
+          borderRadius: "50%",
+          background: hueColor,
+          border: "2px solid white",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.6)",
+          pointerEvents: "none",
+        }} />
+      </div>
+
+      {/* 预览色块 + 吸管 + 模式切换 */}
+      <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{
+          width: 28, height: 28, borderRadius: 6,
+          background: currentHex,
+          border: "1px solid rgba(255,255,255,0.2)",
+          flexShrink: 0,
+        }} />
+
+        {/* 吸管按钮 */}
+        {hasEyeDropper && (
+          <button
+            title={isTouchDevice ? "点击吸取颜色" : "左键吸取 · 右键取消"}
+            onClick={() => {
+              if (!eyedropperActive) {
+                setEyedropperActive(true);
+                handleEyedropper();
+              }
+            }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setEyedropperActive(false);
+            }}
+            style={{
+              width: 28, height: 28,
+              borderRadius: 6,
+              border: `1px solid ${eyedropperActive ? "rgba(120,180,255,0.6)" : "rgba(255,255,255,0.15)"}`,
+              background: eyedropperActive ? "rgba(120,180,255,0.15)" : "rgba(255,255,255,0.06)",
+              color: eyedropperActive ? "rgba(120,180,255,0.9)" : "rgba(255,255,255,0.55)",
+              cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0,
+              transition: "all 0.2s ease",
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 0 3L8 15l-4 1 1-4 8.5-8.5a2.121 2.121 0 0 1 3 0z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="5" cy="15" r="1.2" fill="currentColor"/>
+            </svg>
+          </button>
+        )}
+
+        {/* HEX/RGB 切换按钮 */}
+        <button
+          onClick={() => setMode(m => m === "hex" ? "rgb" : "hex")}
+          style={{
+            marginLeft: "auto",
+            padding: "3px 7px",
+            borderRadius: 5,
+            border: "1px solid rgba(255,255,255,0.15)",
+            background: "rgba(255,255,255,0.06)",
+            color: "rgba(255,255,255,0.5)",
+            fontSize: "0.62rem",
+            letterSpacing: "0.08em",
+            cursor: "pointer",
+            flexShrink: 0,
+          }}
+        >
+          {mode === "hex" ? "RGB" : "HEX"}
+        </button>
+      </div>
+
+      {/* 输入区：HEX 或 RGB */}
+      {mode === "hex" ? (
+        <input
+          value={hexInput}
+          onChange={(e) => {
+            const val = e.target.value;
+            setHexInput(val);
+            if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+              applyHex(val);
+            }
+          }}
+          style={{
+            marginTop: 6,
+            width: "100%",
+            boxSizing: "border-box",
+            background: "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(255,255,255,0.15)",
+            borderRadius: 6,
+            color: "rgba(255,255,255,0.85)",
+            fontSize: "0.72rem",
+            letterSpacing: "0.08em",
+            padding: "4px 8px",
+            fontFamily: "monospace",
+            outline: "none",
+          }}
+          spellCheck={false}
+          onFocus={(e) => e.target.select()}
+        />
+      ) : (
+        <div style={{ marginTop: 6, display: "flex", gap: 4 }}>
+          {(["R", "G", "B"] as const).map((ch, ci) => {
+            const val = rgb[ci];
+            const setVal = (v: number) => {
+              const clamped = Math.max(0, Math.min(255, v));
+              const nr = ci === 0 ? clamped : rgb[0];
+              const ng = ci === 1 ? clamped : rgb[1];
+              const nb = ci === 2 ? clamped : rgb[2];
+              setRgb([nr, ng, nb]);
+              const newHex = "#" + [nr, ng, nb].map(x => x.toString(16).padStart(2, "0")).join("");
+              setHexInput(newHex);
+              applyHex(newHex);
+            };
+            return (
+              <div key={ch} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                <span style={{ fontSize: "0.58rem", color: "rgba(255,255,255,0.35)", letterSpacing: "0.06em" }}>{ch}</span>
+                <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "stretch", gap: 1 }}>
+                  {/* 上箭头 */}
+                  <button
+                    onClick={() => setVal(val + 1)}
+                    style={{
+                      width: "100%", height: 14,
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      borderRadius: "4px 4px 0 0",
+                      color: "rgba(255,255,255,0.45)",
+                      cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                      padding: 0, lineHeight: 1,
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.12)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)"; }}
+                  >
+                    <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
+                      <path d="M4 1L7 5H1L4 1Z" fill="currentColor"/>
+                    </svg>
+                  </button>
+                  {/* 数字显示 / 输入 */}
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={val}
+                    onChange={(e) => {
+                      const n = parseInt(e.target.value);
+                      if (!isNaN(n)) setVal(n);
+                      else if (e.target.value === "") setVal(0);
+                    }}
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      borderTop: "none",
+                      borderBottom: "none",
+                      color: "rgba(255,255,255,0.85)",
+                      fontSize: "0.68rem",
+                      padding: "3px 2px",
+                      textAlign: "center",
+                      outline: "none",
+                      fontFamily: "monospace",
+                    }}
+                    onFocus={(e) => e.target.select()}
+                  />
+                  {/* 下箭头 */}
+                  <button
+                    onClick={() => setVal(val - 1)}
+                    style={{
+                      width: "100%", height: 14,
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      borderRadius: "0 0 4px 4px",
+                      color: "rgba(255,255,255,0.45)",
+                      cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                      padding: 0, lineHeight: 1,
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.12)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)"; }}
+                  >
+                    <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
+                      <path d="M4 5L1 1H7L4 5Z" fill="currentColor"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 恢复默认按钮 */}
+      <button
+        onClick={() => { onReset(); }}
+        style={{
+          marginTop: 10,
+          width: "100%",
+          padding: "5px 0",
+          borderRadius: 6,
+          border: "1px solid rgba(255,255,255,0.15)",
+          background: "rgba(255,255,255,0.06)",
+          color: "rgba(255,255,255,0.6)",
+          fontSize: "0.68rem",
+          letterSpacing: "0.12em",
+          cursor: "pointer",
+          transition: "all 0.2s ease",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.12)";
+          (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.85)";
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
+          (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.6)";
+        }}
+      >
+        <div style={{ width: 10, height: 10, borderRadius: "50%", background: defaultHex, border: "1px solid rgba(255,255,255,0.3)", flexShrink: 0 }} />
+        恢复默认
+      </button>
+    </div>
+    </>
+  );
+}
+
 // ─── 自定义色槽 ───────────────────────────────────────────────────────
-// 桌面：左键=应用颜色，右键=取消选中；铅笔图标=打开调色盘（onChange实时apply）
-// 移动：点整个色块打开调色盘，onChange实时apply
-function CustomColorSlot({ hex, selected, onPickerChange, onApply, onCancel }: {
+// 点击色块：移动端先应用颜色再打开 picker；桌面端左键直接应用
+// 铅笔图标：两端均可打开 picker
+function CustomColorSlot({ hex, selected, onPickerChange, onApply, onReset, defaultHex }: {
   hex: string;
   selected: boolean;
   onPickerChange: (hex: string) => void;
   onApply: () => void;
-  onCancel: () => void;
+  onReset: () => void;
+  defaultHex: string;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const isTouchRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleChange = useCallback((newHex: string) => {
+    onPickerChange(newHex);
+    onApply();
+  }, [onPickerChange, onApply]);
+
+  const handleReset = useCallback(() => {
+    onPickerChange(defaultHex);
+    onReset();
+  }, [defaultHex, onPickerChange, onReset]);
+
+  const openPicker = () => setPickerOpen(true);
 
   return (
-    <div style={{ position: "relative", width: 22, height: 22, flexShrink: 0 }}>
+    <div ref={containerRef} style={{ position: "relative", width: 22, height: 22, flexShrink: 0 }}>
       <motion.button
         whileHover={{ scale: 1.15 }}
         whileTap={{ scale: 0.9 }}
         onTouchStart={() => { isTouchRef.current = true; }}
         onClick={() => {
           if (isTouchRef.current) {
-            // 移动端：打开调色盘
             isTouchRef.current = false;
-            inputRef.current?.click();
+            // 移动端：先应用当前颜色，再打开 picker
+            onApply();
+            setPickerOpen(true);
           } else {
             // 桌面端左键：应用颜色
             onApply();
           }
         }}
-        onContextMenu={(e) => { e.preventDefault(); onCancel(); }}
         style={{
           width: 22, height: 22, borderRadius: "50%",
           background: hex,
-          border: selected ? "2px solid rgba(255,255,255,0.85)" : "2px solid rgba(255,255,255,0.28)",
+          border: selected ? "3px solid rgba(255,255,255,0.95)" : "2px solid rgba(255,255,255,0.28)",
           cursor: "pointer",
           boxShadow: selected
-            ? "0 0 0 2px rgba(255,255,255,0.15), 0 2px 8px rgba(0,0,0,0.4)"
+            ? "0 0 0 3px rgba(255,255,255,0.25), 0 2px 8px rgba(0,0,0,0.4)"
             : "0 1px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.15)",
           transition: "border 0.2s ease, box-shadow 0.2s ease",
           position: "relative",
         }}
       >
-        {/* 铅笔图标：桌面端专用，点击打开 picker */}
+        {/* 铅笔图标：点击打开 picker */}
         <div
-          onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
+          onClick={(e) => { e.stopPropagation(); openPicker(); }}
           style={{
             position: "absolute", bottom: -3, right: -3,
             width: 13, height: 13,
@@ -985,14 +1549,16 @@ function CustomColorSlot({ hex, selected, onPickerChange, onApply, onCancel }: {
         </div>
       </motion.button>
 
-      {/* 隐藏的 color input，由铅笔图标或移动端色块点击触发 */}
-      <input
-        ref={inputRef}
-        type="color"
-        value={hex}
-        style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: 0, height: 0 }}
-        onChange={(e) => { onPickerChange(e.target.value); onApply(); }}
-      />
+      {/* 自定义颜色选择器弹窗 */}
+      {pickerOpen && (
+        <CustomColorPicker
+          hex={hex}
+          defaultHex={defaultHex}
+          onChange={handleChange}
+          onReset={handleReset}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
     </div>
   );
 }

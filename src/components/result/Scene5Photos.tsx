@@ -20,8 +20,6 @@ export function Scene5Photos({ giftImages }: Scene5PhotosProps) {
   const sectionRef = useRef<HTMLElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  if (giftImages.length === 0) return null;
-
   const go = useCallback((dir: number) => {
     setDirection(dir);
     setCurrent((c) => (c + dir + giftImages.length) % giftImages.length);
@@ -82,6 +80,8 @@ export function Scene5Photos({ giftImages }: Scene5PhotosProps) {
       filter: "blur(6px)",
     }),
   };
+
+  if (giftImages.length === 0) return null;
 
   return (
     <section
