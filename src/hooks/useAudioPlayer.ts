@@ -6,6 +6,7 @@ export function useAudioPlayer(src: string) {
   const fadeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const playingRef = useRef(false);
   const unlockedRef = useRef(false);
+  const targetVolRef = useRef(0.65); // 记住目标音量，fadeOut 后 fadeIn 可恢复
 
   const getAudio = useCallback(() => {
     if (!audioRef.current && typeof window !== "undefined") {
@@ -30,25 +31,38 @@ export function useAudioPlayer(src: string) {
     const audio = getAudio();
     if (!audio) return;
     unlockedRef.current = true;
+    // play 再立即 pause，解锁 AudioContext；同时保证 currentTime 归零
     const p = audio.play();
-    if (p) p.then(() => audio.pause()).catch(() => {});
+    if (p) {
+      p.then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+      }).catch(() => {});
+    }
   }, [getAudio]);
 
   const fadeIn = useCallback((targetVolume = 0.65, onBlocked?: () => void) => {
     const audio = getAudio();
     if (!audio) return;
+    targetVolRef.current = targetVolume;
     clearFade();
+    // 从头播放
+    if (audio.currentTime > 0 && !playingRef.current) {
+      audio.currentTime = 0;
+    }
     const p = audio.play();
     if (p) {
       p.then(() => {
         playingRef.current = true;
         fadeTimerRef.current = setInterval(() => {
-          if (audio.volume < targetVolume) {
-            audio.volume = Math.min(targetVolume, audio.volume + 0.025);
+          if (audio.volume < targetVolume - 0.001) {
+            // 步长加大，iOS 上小步长有时被忽略
+            audio.volume = Math.min(targetVolume, parseFloat((audio.volume + 0.04).toFixed(3)));
           } else {
+            try { audio.volume = targetVolume; } catch { /* ignore */ }
             clearFade();
           }
-        }, 60);
+        }, 80);
       }).catch(() => {
         onBlocked?.();
       });
@@ -63,11 +77,13 @@ export function useAudioPlayer(src: string) {
     if (!audio) return;
     playingRef.current = false;
     clearFade();
+    // 步长加大（0.06），避免 iOS 精度问题导致 interval 永远不结束
     fadeTimerRef.current = setInterval(() => {
-      if (audio.volume > 0.02) {
-        audio.volume = Math.max(0, audio.volume - 0.018);
+      const next = parseFloat((audio.volume - 0.06).toFixed(3));
+      if (next > 0.01) {
+        try { audio.volume = next; } catch { /* ignore */ }
       } else {
-        audio.volume = 0;
+        try { audio.volume = 0; } catch { /* ignore */ }
         audio.pause();
         clearFade();
         onDone?.();
@@ -75,15 +91,25 @@ export function useAudioPlayer(src: string) {
     }, 80);
   }, [getAudio, clearFade]);
 
+  const stop = useCallback(() => {
+    const audio = getAudio();
+    if (!audio) return;
+    playingRef.current = false;
+    clearFade();
+    try { audio.volume = 0; } catch { /* ignore */ }
+    audio.pause();
+    audio.currentTime = 0;
+  }, [getAudio, clearFade]);
+
   const toggle = useCallback(() => {
     if (playingRef.current) {
       fadeOut();
     } else {
-      fadeIn();
+      fadeIn(targetVolRef.current);
     }
   }, [fadeIn, fadeOut]);
 
   const isPlaying = () => playingRef.current;
 
-  return { fadeIn, fadeOut, toggle, isPlaying, unlock };
+  return { fadeIn, fadeOut, stop, toggle, isPlaying, unlock };
 }

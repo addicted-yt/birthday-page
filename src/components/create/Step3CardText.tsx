@@ -988,10 +988,13 @@ function CustomColorPicker({
 
   // 同步外部 hex 变化
   useEffect(() => {
-    const h = hexToHsv(hex);
-    setHsv(h);
-    setHexInput(hex);
-    setRgb([parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)]);
+    const timer = window.setTimeout(() => {
+      const h = hexToHsv(hex);
+      setHsv(h);
+      setHexInput(hex);
+      setRgb([parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)]);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [hex]);
 
   const applyHex = useCallback((newHex: string) => {

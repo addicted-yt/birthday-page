@@ -25,7 +25,10 @@ export function Scene4Gift({ onOpen, onEnter }: Scene4GiftProps) {
   const sectionRef = useRef<HTMLElement>(null);
   const touchStartY = useRef(0);
   const onEnterRef = useRef(onEnter);
-  onEnterRef.current = onEnter;
+
+  useEffect(() => {
+    onEnterRef.current = onEnter;
+  }, [onEnter]);
 
   // 进入视口时通知外部（用于停止 birthdaySong）
   useEffect(() => {

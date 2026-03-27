@@ -6,6 +6,8 @@ import { SpringButton } from "@/components/ui/SpringButton";
 import { compressImage, FileTooLargeError } from "@/lib/imageToBase64";
 import { GoToStepBar } from "./GoToStepBar";
 
+const MAX_GIFT_IMAGES = 3;
+
 interface Step5GiftImagesProps {
   images: GiftImage[];
   onChange: (images: GiftImage[]) => void;
@@ -20,7 +22,7 @@ export function Step5GiftImages({ images, onChange, onNext, onBack, showGoToStep
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    const remaining = 3 - images.length;
+    const remaining = MAX_GIFT_IMAGES - images.length;
     const toProcess = files.slice(0, remaining);
     const results: string[] = [];
     let hasError = false;
@@ -73,7 +75,7 @@ export function Step5GiftImages({ images, onChange, onNext, onBack, showGoToStep
             </button>
           </div>
         ))}
-        {images.length < 3 && (
+        {images.length < MAX_GIFT_IMAGES && (
           <label className="bg-white/3 border border-dashed border-white/15 rounded-lg cursor-pointer hover:border-white/30 transition-colors flex items-center justify-center h-24">
             <input
               type="file"

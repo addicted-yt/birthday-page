@@ -1,23 +1,43 @@
-"use client";
-import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { ResultPageShell } from "@/components/result/ResultPageShell";
+import type { Metadata } from "next";
+import { ResultContent } from "./ResultContent";
 
-function ResultContent() {
-  const searchParams = useSearchParams();
-  const d = searchParams.get("d");
-  const sid = searchParams.get("sid");
-  const name = searchParams.get("name");
-  const creator = searchParams.get("creator") === "1";
+interface Props {
+  searchParams: Promise<{ d?: string; sid?: string; name?: string; creator?: string }>;
+}
 
-  return (
-    <ResultPageShell
-      encodedData={d}
-      sessionId={sid}
-      encodedName={name}
-      isCreator={creator}
-    />
-  );
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const params = await searchParams;
+  const name = params.name
+    ? (() => { try { return decodeURIComponent(params.name!); } catch { return params.name!; } })()
+    : "你";
+  const title = `送给 ${name} 的生日祝福`;
+  const description = "一份专属的沉浸式生日祝福";
+  const ogImageUrl = `/result/opengraph-image?name=${encodeURIComponent(name)}`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [ogImageUrl],
+    },
+  };
 }
 
 export default function ResultPage() {

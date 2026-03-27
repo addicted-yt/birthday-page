@@ -11,26 +11,24 @@ interface Scene4_5CandleProps {
 const LINES = [
   "闭上眼睛",
   "许一个只属于你的愿望",
-  "然后……",
+  "然后...",
   "吹灭它",
 ];
 
-// SVG 坐标常量
 const SVG_W = 180;
 const SVG_H = 175;
-// 蜡烛芯顶端（SVG 坐标）— 火焰锚点
 const WICK_X = 90;
 const WICK_Y = 38;
 
-// ── 火焰（SVG <g>，原点在芯顶端）────────────────────────
 function FlameSVG({ visible, showSmoke }: { visible: boolean; showSmoke: boolean }) {
   return (
-    // translate 到芯顶端，火焰向上生长（负 y 方向）
     <g transform={`translate(${WICK_X},${WICK_Y})`}>
-      {/* 暖光晕 */}
       {visible && (
         <motion.ellipse
-          cx={0} cy={0} rx={18} ry={10}
+          cx={0}
+          cy={0}
+          rx={18}
+          ry={10}
           fill="rgba(255,200,60,0.18)"
           style={{ filter: "blur(5px)" }}
           animate={{ ry: [10, 14, 10], opacity: [0.7, 0.35, 0.7] }}
@@ -47,7 +45,6 @@ function FlameSVG({ visible, showSmoke }: { visible: boolean; showSmoke: boolean
             style={{ originX: "0px", originY: "0px" }}
             transition={{ ...springGentle, delay: 0.1 }}
           >
-            {/* 外焰：泪滴形，底部居中在 (0,0)，向上延伸到 -38 */}
             <motion.path
               d="M0,0 C8,-8 12,-20 0,-38 C-12,-20 -8,-8 0,0 Z"
               fill="url(#flameOuter)"
@@ -55,7 +52,6 @@ function FlameSVG({ visible, showSmoke }: { visible: boolean; showSmoke: boolean
               animate={{ x: [0, 1, -0.8, 0.6, 0], scaleX: [1, 1.1, 0.92, 1.06, 1] }}
               transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
             />
-            {/* 内芯 */}
             <motion.path
               d="M0,-4 C4,-10 6,-20 0,-32 C-6,-20 -4,-10 0,-4 Z"
               fill="url(#flameInner)"
@@ -66,14 +62,14 @@ function FlameSVG({ visible, showSmoke }: { visible: boolean; showSmoke: boolean
         )}
       </AnimatePresence>
 
-      {/* 烟雾粒子（吹灭后）*/}
       <AnimatePresence>
         {showSmoke && (
           <motion.g initial={{ opacity: 1 }} exit={{ opacity: 0 }}>
             {[0, 1, 2, 3].map((i) => (
               <motion.circle
                 key={i}
-                cx={0} cy={0}
+                cx={0}
+                cy={0}
                 r={3 + i}
                 fill="rgba(200,200,200,0.4)"
                 style={{ filter: `blur(${2 + i * 0.5}px)` }}
@@ -94,66 +90,69 @@ function FlameSVG({ visible, showSmoke }: { visible: boolean; showSmoke: boolean
   );
 }
 
-// ── 3D 蛋糕 SVG（撑满父容器）─────────────────────────
 function CakeSVG({ phase, showSmoke }: { phase: string; showSmoke: boolean }) {
   const waiting = phase === "waiting";
   const flameVisible = phase !== "blown" && phase !== "done";
+
   return (
     <motion.div
       style={{ position: "relative", width: "100%", height: "100%" }}
       animate={waiting ? { y: [0, -4, 0] } : {}}
       transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
     >
-      {/* 底部投影 */}
-      <div style={{
-        position: "absolute", bottom: 2, left: "50%", transform: "translateX(-50%)",
-        width: "72%", height: 14,
-        borderRadius: "50%",
-        background: "rgba(0,0,0,0.32)",
-        filter: "blur(8px)",
-      }} />
+      <div
+        style={{
+          position: "absolute",
+          bottom: 2,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "72%",
+          height: 14,
+          borderRadius: "50%",
+          background: "rgba(0,0,0,0.32)",
+          filter: "blur(8px)",
+        }}
+      />
 
-      <svg width="100%" height="100%" viewBox={`0 0 ${SVG_W} ${SVG_H}`} fill="none" xmlns="http://www.w3.org/2000/svg"
+      <svg
+        width="100%"
+        height="100%"
+        viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
         style={{ position: "absolute", top: 0, left: 0 }}
       >
         <defs>
-          {/* 蛋糕侧面渐变 — 下层 */}
           <linearGradient id="side1" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor="#f5deb3" />
             <stop offset="40%" stopColor="#fff8f0" />
             <stop offset="100%" stopColor="#d4a96a" />
           </linearGradient>
-          {/* 蛋糕侧面渐变 — 上层 */}
           <linearGradient id="side2" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor="#fce8c8" />
             <stop offset="40%" stopColor="#fff8f0" />
             <stop offset="100%" stopColor="#dbb87a" />
           </linearGradient>
-          {/* 顶面渐变 */}
           <radialGradient id="topFace" cx="42%" cy="40%" r="60%">
             <stop offset="0%" stopColor="#ffffff" />
             <stop offset="60%" stopColor="#fff4e0" />
             <stop offset="100%" stopColor="#f0d9a8" />
           </radialGradient>
-          {/* 中层顶面 */}
           <radialGradient id="midFace" cx="42%" cy="40%" r="60%">
             <stop offset="0%" stopColor="#ffffff" />
             <stop offset="60%" stopColor="#fff4e0" />
             <stop offset="100%" stopColor="#f0d9a8" />
           </radialGradient>
-          {/* 奶油夹心 */}
           <linearGradient id="cream1" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor="#ffb8c8" stopOpacity="0.9" />
             <stop offset="50%" stopColor="#ffd6e0" stopOpacity="0.95" />
             <stop offset="100%" stopColor="#f0909a" stopOpacity="0.8" />
           </linearGradient>
-          {/* 蜡烛渐变 */}
           <linearGradient id="candleGrad" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor="#e8e8e8" />
             <stop offset="35%" stopColor="#ffffff" />
             <stop offset="100%" stopColor="#c0c0c0" />
           </linearGradient>
-          {/* 火焰渐变 */}
           <radialGradient id="flameOuter" cx="50%" cy="90%" r="55%">
             <stop offset="0%" stopColor="#fff7a0" />
             <stop offset="35%" stopColor="#ffcc30" />
@@ -165,131 +164,189 @@ function CakeSVG({ phase, showSmoke }: { phase: string; showSmoke: boolean }) {
             <stop offset="50%" stopColor="#fff5c0" stopOpacity="0.7" />
             <stop offset="100%" stopColor="#ffe060" stopOpacity="0" />
           </radialGradient>
-          {/* 蜡烛顶部融蜡 */}
           <radialGradient id="wickGlow" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="#ffe090" stopOpacity="0.6" />
             <stop offset="100%" stopColor="#ffcc40" stopOpacity="0" />
           </radialGradient>
-          {/* 奶油花渐变 */}
           <radialGradient id="roseGrad" cx="40%" cy="35%" r="60%">
             <stop offset="0%" stopColor="#ffffff" />
             <stop offset="100%" stopColor="#fce4ec" />
           </radialGradient>
         </defs>
 
-        {/* ── 下层蛋糕侧面 ── */}
         <path d="M20 118 L20 142 Q90 158 160 142 L160 118 Q90 134 20 118Z" fill="url(#side1)" />
-        {/* 下层底边椭圆 */}
         <ellipse cx="90" cy="142" rx="70" ry="10" fill="#d4a96a" opacity="0.5" />
-        {/* 下层顶面椭圆 */}
         <ellipse cx="90" cy="118" rx="70" ry="11" fill="url(#topFace)" />
-        {/* 下层顶面高光 */}
         <ellipse cx="72" cy="113" rx="28" ry="5" fill="rgba(255,255,255,0.45)" />
 
-        {/* ── 奶油夹心层 ── */}
         <path d="M20 108 L20 118 Q90 134 160 118 L160 108 Q90 124 20 108Z" fill="url(#cream1)" />
-        {/* 奶油波浪顶边 */}
         <path
           d="M20 108 Q32 103, 44 108 Q56 113, 68 108 Q80 103, 92 108 Q104 113, 116 108 Q128 103, 140 108 Q152 113, 160 108"
-          stroke="rgba(255,255,255,0.7)" strokeWidth="1.5" fill="none"
+          stroke="rgba(255,255,255,0.7)"
+          strokeWidth="1.5"
+          fill="none"
         />
 
-        {/* ── 上层蛋糕侧面 ── */}
         <path d="M30 82 L30 108 Q90 122 150 108 L150 82 Q90 96 30 82Z" fill="url(#side2)" />
-        {/* 上层底边 */}
         <ellipse cx="90" cy="108" rx="60" ry="9" fill="#dbb87a" opacity="0.4" />
-        {/* 上层顶面 */}
         <ellipse cx="90" cy="82" rx="60" ry="10" fill="url(#midFace)" />
-        {/* 上层高光 */}
         <ellipse cx="76" cy="78" rx="22" ry="4" fill="rgba(255,255,255,0.5)" />
 
-        {/* ── 顶层奶油花装饰 ── */}
-        {/* 奶油花 1 */}
         <ellipse cx="62" cy="79" rx="7" ry="4.5" fill="url(#roseGrad)" />
         <ellipse cx="62" cy="77" rx="5" ry="3" fill="rgba(255,255,255,0.8)" />
-        {/* 奶油花 2 */}
         <ellipse cx="118" cy="79" rx="7" ry="4.5" fill="url(#roseGrad)" />
         <ellipse cx="118" cy="77" rx="5" ry="3" fill="rgba(255,255,255,0.8)" />
-        {/* 小草莓点缀 */}
         <circle cx="62" cy="108" r="4" fill="#e05060" opacity="0.85" />
         <circle cx="118" cy="108" r="4" fill="#e05060" opacity="0.85" />
         <circle cx="90" cy="112" r="3.5" fill="#e05060" opacity="0.75" />
-        {/* 草莓高光 */}
         <circle cx="60.5" cy="106.5" r="1.2" fill="rgba(255,255,255,0.7)" />
         <circle cx="116.5" cy="106.5" r="1.2" fill="rgba(255,255,255,0.7)" />
 
-        {/* ── 蜡烛 ── */}
-        {/* 蜡烛主体 */}
         <rect x="84" y="46" width="12" height="36" rx="3" fill="url(#candleGrad)" />
-        {/* 蜡烛右侧阴影 */}
         <rect x="91" y="46" width="5" height="36" rx="2" fill="rgba(160,140,120,0.25)" />
-        {/* 融蜡效果 */}
         <ellipse cx="90" cy="48" rx="7" ry="3.5" fill="#ffffff" opacity="0.9" />
         <path d="M86 49 Q84 54, 83 60" stroke="#f0e0c0" strokeWidth="2.5" strokeLinecap="round" fill="none" opacity="0.7" />
-        {/* 芯 */}
         <line x1="90" y1="38" x2="90" y2="47" stroke="#555" strokeWidth="1.2" strokeLinecap="round" />
-        {/* 芯根部发光 */}
         <ellipse cx="90" cy="47" rx="4" ry="2" fill="url(#wickGlow)" />
 
-        {/* 火焰 + 烟雾（锚定在芯顶端）*/}
         <FlameSVG visible={flameVisible} showSmoke={showSmoke} />
 
-        {/* ── 描边收尾 ── */}
-        {/* 下层外轮廓 */}
         <path d="M20 118 Q90 134 160 118" stroke="rgba(180,140,90,0.25)" strokeWidth="0.8" fill="none" />
         <path d="M20 142 Q90 158 160 142" stroke="rgba(160,120,70,0.2)" strokeWidth="0.8" fill="none" />
-        {/* 上层外轮廓 */}
         <path d="M30 82 Q90 96 150 82" stroke="rgba(180,140,90,0.2)" strokeWidth="0.8" fill="none" />
       </svg>
-
-      {/* 火焰/烟雾挂载点（蜡烛芯正上方）*/}
     </motion.div>
   );
 }
 
-// ── 主组件 ────────────────────────────────────────────
 export function Scene4_5Candle({ onBlown, onEnter }: Scene4_5CandleProps) {
   const sectionRef = useRef<HTMLElement>(null);
+  const isTouchDevice =
+    typeof window !== "undefined" &&
+    ("ontouchstart" in window ||
+      (typeof window.matchMedia === "function" &&
+        window.matchMedia("(hover: none) and (pointer: coarse)").matches));
   const [phase, setPhase] = useState<"idle" | "subtitles" | "waiting" | "blown" | "done">("idle");
   const [visibleLines, setVisibleLines] = useState(0);
   const [showSmoke, setShowSmoke] = useState(false);
   const [showHint, setShowHint] = useState(false);
+  const [showMicNotice, setShowMicNotice] = useState(false);
+  const [micMode, setMicMode] = useState<"pending" | "enabled" | "skipped">(() => {
+    if (typeof window === "undefined") return "enabled";
+    return "ontouchstart" in window ||
+      (typeof window.matchMedia === "function" &&
+        window.matchMedia("(hover: none) and (pointer: coarse)").matches)
+      ? "pending"
+      : "enabled";
+  });
   const hasEnteredRef = useRef(false);
   const hasBlownRef = useRef(false);
+  const micDetectionStartedRef = useRef(false);
   const micStreamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number>(0);
   const onEnterRef = useRef(onEnter);
   const onBlownRef = useRef(onBlown);
-  onEnterRef.current = onEnter;
-  onBlownRef.current = onBlown;
 
-  // 未吹蜡烛前：锁定向下滚动；同时用滚动手势触发 onEnter（规避 autoplay 拦截）
+  useEffect(() => {
+    onEnterRef.current = onEnter;
+    onBlownRef.current = onBlown;
+  }, [onEnter, onBlown]);
+
+  const triggerBlown = useCallback(() => {
+    if (hasBlownRef.current) return;
+    hasBlownRef.current = true;
+    micDetectionStartedRef.current = false;
+    cancelAnimationFrame(animFrameRef.current);
+    micStreamRef.current?.getTracks().forEach((track) => track.stop());
+    micStreamRef.current = null;
+    setPhase("blown");
+    setShowHint(false);
+    setShowMicNotice(false);
+    setShowSmoke(true);
+    window.setTimeout(() => {
+      setShowSmoke(false);
+      setPhase("done");
+    }, 1400);
+  }, []);
+
+  const startMicDetection = useCallback(async () => {
+    if (micDetectionStartedRef.current || hasBlownRef.current || micMode === "skipped") return;
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setMicMode("skipped");
+      return;
+    }
+    micDetectionStartedRef.current = true;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      micStreamRef.current = stream;
+      const ctx = new AudioContext();
+      const source = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      void ctx.suspend().catch(() => {});
+
+      const samples = new Uint8Array(analyser.frequencyBinCount);
+      let loudCount = 0;
+
+      const check = () => {
+        if (hasBlownRef.current) return;
+        if (ctx.state === "suspended") void ctx.resume().catch(() => {});
+        analyser.getByteFrequencyData(samples);
+        const avg = samples.reduce((sum, value) => sum + value, 0) / samples.length;
+        if (avg > 62) {
+          loudCount += 1;
+          if (loudCount >= 4) {
+            triggerBlown();
+            stream.getTracks().forEach((track) => track.stop());
+            micStreamRef.current = null;
+            void ctx.close();
+            return;
+          }
+        } else {
+          loudCount = 0;
+        }
+        animFrameRef.current = requestAnimationFrame(check);
+      };
+
+      animFrameRef.current = requestAnimationFrame(check);
+    } catch {
+      micDetectionStartedRef.current = false;
+      setMicMode("skipped");
+      // Keep tap-to-blow as the fallback when mic permission is unavailable.
+    }
+  }, [micMode, triggerBlown]);
+
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return;
-    let ty = 0;
+    let touchStartY = 0;
 
     const triggerEnterFromGesture = () => {
-      if (!hasEnteredRef.current) {
-        hasEnteredRef.current = true;
-        onEnterRef.current();
-        setTimeout(() => setPhase("subtitles"), 800);
+      if (hasEnteredRef.current || hasBlownRef.current) return;
+      hasEnteredRef.current = true;
+      onEnterRef.current();
+      window.setTimeout(() => setPhase("subtitles"), 800);
+    };
+
+    const onWheel = (event: WheelEvent) => {
+      if (!hasBlownRef.current && event.deltaY > 0) {
+        event.preventDefault();
+        triggerEnterFromGesture();
       }
     };
 
-    const onWheel = (e: WheelEvent) => {
-      if (!hasBlownRef.current && e.deltaY > 0) {
-        e.preventDefault();
+    const onTouchStart = (event: TouchEvent) => {
+      touchStartY = event.touches[0].clientY;
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      if (!hasBlownRef.current && touchStartY - event.touches[0].clientY > 0) {
+        event.preventDefault();
         triggerEnterFromGesture();
       }
     };
-    const onTouchStart = (e: TouchEvent) => { ty = e.touches[0].clientY; };
-    const onTouchMove = (e: TouchEvent) => {
-      if (!hasBlownRef.current && ty - e.touches[0].clientY > 0) {
-        e.preventDefault();
-        triggerEnterFromGesture();
-      }
-    };
+
     el.addEventListener("wheel", onWheel, { passive: false });
     el.addEventListener("touchstart", onTouchStart, { passive: true });
     el.addEventListener("touchmove", onTouchMove, { passive: false });
@@ -300,141 +357,102 @@ export function Scene4_5Candle({ onBlown, onEnter }: Scene4_5CandleProps) {
     };
   }, []);
 
-  // 进入视口触发（兜底：若没有手势触发 onEnter，由此补触发）
-  useEffect(() => {
-    const el = sectionRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !hasEnteredRef.current) {
-          hasEnteredRef.current = true;
-          onEnterRef.current();
-          setTimeout(() => setPhase("subtitles"), 800);
-        } else if (entry.isIntersecting && hasEnteredRef.current) {
-          // onEnter 已由手势触发，只启动字幕
-          setTimeout(() => setPhase((p) => p === "idle" ? "subtitles" : p), 800);
-        }
-      },
-      { threshold: 0.55 }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-
-  // 字幕逐行展示
   useEffect(() => {
     if (phase !== "subtitles") return;
     let idx = 0;
+    const timers: number[] = [];
+
     const showNext = () => {
-      idx++;
+      idx += 1;
       setVisibleLines(idx);
-      // 最后一行"吹灭它"出现时立即开始监听麦克风，延迟 600ms 再显示提示词
       if (idx === LINES.length) {
         setPhase("waiting");
-        startMicDetection();
-        setTimeout(() => setShowHint(true), 600);
+        setShowHint(false);
+        if (isTouchDevice && micMode === "pending") {
+          setShowMicNotice(true);
+        }
       } else {
-        setTimeout(showNext, 700);
+        timers.push(window.setTimeout(showNext, 700));
       }
     };
-    setTimeout(showNext, 400);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
 
-  // 麦克风检测
-  const startMicDetection = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      micStreamRef.current = stream;
-      const ctx = new AudioContext();
-      const source = ctx.createMediaStreamSource(stream);
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 256;
-      source.connect(analyser);
-      // 注意：analyser 不 connect 到 ctx.destination，避免麦克风声音外放
-      // iOS 上 getUserMedia 会把音频会话切到 PlayAndRecord 模式（音量变大），
-      // 挂起 ctx 可减轻该影响
-      ctx.suspend().catch(() => {});
-      const data = new Uint8Array(analyser.frequencyBinCount);
-      let loudCount = 0;
-      const check = () => {
-        if (hasBlownRef.current) return;
-        // resume ctx 只在需要读数据时，读完再 suspend
-        if (ctx.state === "suspended") ctx.resume().catch(() => {});
-        analyser.getByteFrequencyData(data);
-        const avg = data.reduce((a, b) => a + b, 0) / data.length;
-        if (avg > 62) {
-          loudCount++;
-          if (loudCount >= 4) {
-            triggerBlown();
-            stream.getTracks().forEach((t) => t.stop());
-            ctx.close();
-            return;
-          }
-        } else {
-          loudCount = 0;
-        }
-        animFrameRef.current = requestAnimationFrame(check);
-      };
-      animFrameRef.current = requestAnimationFrame(check);
-    } catch {
-      // 权限拒绝：降级为仅点击
+    timers.push(window.setTimeout(showNext, 400));
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+    };
+  }, [isTouchDevice, micMode, phase]);
+
+  useEffect(() => {
+    if (phase !== "waiting" || showMicNotice) return;
+    const timers: number[] = [];
+    if (micMode === "enabled") {
+      timers.push(
+        window.setTimeout(() => {
+          void startMicDetection();
+        }, 0)
+      );
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    timers.push(window.setTimeout(() => setShowHint(true), 600));
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+    };
+  }, [micMode, phase, showMicNotice, startMicDetection]);
 
-  const triggerBlown = useCallback(() => {
-    if (hasBlownRef.current) return;
-    hasBlownRef.current = true;
-    cancelAnimationFrame(animFrameRef.current);
-    micStreamRef.current?.getTracks().forEach((t) => t.stop());
-    setPhase("blown");
-    setShowHint(false);
-    setShowSmoke(true);
-    setTimeout(() => {
-      setShowSmoke(false);
-      setPhase("done");
-      // 不自动跳转，显示下滑提示让用户自己滑
-    }, 1400);
-  }, []);
-
-  // 清理麦克风
   useEffect(() => {
     return () => {
+      micDetectionStartedRef.current = false;
       cancelAnimationFrame(animFrameRef.current);
-      micStreamRef.current?.getTracks().forEach((t) => t.stop());
+      micStreamRef.current?.getTracks().forEach((track) => track.stop());
+      micStreamRef.current = null;
     };
   }, []);
 
-  // done 阶段：section 滑出视口时触发 onBlown 回调
+  const handleEnableMic = useCallback(() => {
+    setShowMicNotice(false);
+    setMicMode("enabled");
+  }, []);
+
+  const handleCloseMicNotice = useCallback(() => {
+    setShowMicNotice(false);
+    setMicMode("enabled");
+  }, []);
+
+  const handleSkipMic = useCallback(() => {
+    setShowMicNotice(false);
+    setMicMode("skipped");
+  }, []);
+
   useEffect(() => {
     if (phase !== "done") return;
     const el = sectionRef.current;
     if (!el) return;
-    const obs = new IntersectionObserver(
+    const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry.isIntersecting) {
-          obs.disconnect();
+          observer.disconnect();
           onBlownRef.current();
         }
       },
       { threshold: 0.1 }
     );
-    obs.observe(el);
-    return () => obs.disconnect();
+    observer.observe(el);
+    return () => observer.disconnect();
   }, [phase]);
-
-  const flameVisible = phase !== "blown" && phase !== "done";
-  void flameVisible; // 已移入 CakeSVG
 
   return (
     <section
       ref={sectionRef}
       className="scroll-snap-start"
-      style={{ zIndex: 10, height: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", touchAction: phase === "done" ? "auto" : "none" }}
+      style={{
+        zIndex: 10,
+        height: "100dvh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        touchAction: phase === "done" ? "auto" : "none",
+      }}
     >
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "clamp(1.6rem, 5vw, 2.8rem)" }}>
-
-        {/* 蛋糕（含火焰/烟雾，已内嵌 SVG 坐标系）*/}
         <motion.div
           style={{
             position: "relative",
@@ -446,17 +464,20 @@ export function Scene4_5Candle({ onBlown, onEnter }: Scene4_5CandleProps) {
           whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: true }}
           transition={{ ...springGentle, delay: 0.3 }}
-          onClick={() => { if (phase === "waiting") triggerBlown(); }}
+          onClick={() => {
+            if (phase === "waiting") triggerBlown();
+          }}
           whileHover={phase === "waiting" ? { scale: 1.04 } : {}}
           whileTap={phase === "waiting" ? { scale: 0.96 } : {}}
         >
           <CakeSVG phase={phase} showSmoke={showSmoke} />
 
-          {/* 等待阶段脉冲光圈 */}
           {phase === "waiting" && (
             <motion.div
               style={{
-                position: "absolute", inset: 0, borderRadius: "50%",
+                position: "absolute",
+                inset: 0,
+                borderRadius: "50%",
                 background: "radial-gradient(circle, rgba(255,210,80,0.09) 0%, transparent 70%)",
                 transform: "scale(1.4)",
                 pointerEvents: "none",
@@ -467,23 +488,23 @@ export function Scene4_5Candle({ onBlown, onEnter }: Scene4_5CandleProps) {
           )}
         </motion.div>
 
-        {/* 字幕区 */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem", minHeight: "6rem" }}>
-          {LINES.map((line, i) => (
+          {LINES.map((line, index) => (
             <motion.p
-              key={i}
+              key={index}
               className="font-light select-none"
               style={{
                 fontSize: "clamp(0.9rem, 2.5vw, 1.3rem)",
                 letterSpacing: "0.25em",
-                color: i === LINES.length - 1 ? "rgba(255,255,255,0.88)" : "rgba(255,255,255,0.65)",
+                color: index === LINES.length - 1 ? "rgba(255,255,255,0.88)" : "rgba(255,255,255,0.65)",
                 lineHeight: 1.8,
                 margin: 0,
-                opacity: visibleLines > i ? 1 : 0,
-                transform: visibleLines > i ? "translateY(0)" : "translateY(10px)",
-                transition: visibleLines > i
-                  ? "opacity 0.8s ease, transform 0.8s cubic-bezier(0.25,0.46,0.45,0.94)"
-                  : "none",
+                opacity: visibleLines > index ? 1 : 0,
+                transform: visibleLines > index ? "translateY(0)" : "translateY(10px)",
+                transition:
+                  visibleLines > index
+                    ? "opacity 0.8s ease, transform 0.8s cubic-bezier(0.25,0.46,0.45,0.94)"
+                    : "none",
               }}
             >
               {line}
@@ -491,7 +512,6 @@ export function Scene4_5Candle({ onBlown, onEnter }: Scene4_5CandleProps) {
           ))}
         </div>
 
-        {/* 底部提示区 */}
         <AnimatePresence mode="wait">
           {showHint && phase === "waiting" && (
             <motion.div
@@ -503,11 +523,29 @@ export function Scene4_5Candle({ onBlown, onEnter }: Scene4_5CandleProps) {
               transition={{ ...springGentle }}
             >
               <motion.span
-                style={{ fontSize: "clamp(0.72rem, 1.4vw, 0.9rem)", letterSpacing: "0.35em", color: "rgba(255,255,255,0.75)", fontWeight: 500 }}
-                animate={{ opacity: [0.30, 1, 0.30], y: [0, -3, 0] }}
+                style={{
+                  display: "none",
+                  fontSize: "clamp(0.72rem, 1.4vw, 0.9rem)",
+                  letterSpacing: "0.35em",
+                  color: "rgba(255,255,255,0.75)",
+                  fontWeight: 500,
+                }}
+                animate={{ opacity: [0.3, 1, 0.3], y: [0, -3, 0] }}
                 transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
               >
                 对着屏幕吹一口气
+              </motion.span>
+              <motion.span
+                style={{
+                  fontSize: "clamp(0.72rem, 1.4vw, 0.9rem)",
+                  letterSpacing: "0.35em",
+                  color: "rgba(255,255,255,0.75)",
+                  fontWeight: 500,
+                }}
+                animate={{ opacity: [0.3, 1, 0.3], y: [0, -3, 0] }}
+                transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+              >
+                {micMode === "skipped" ? "轻触蜡烛让它熄灭" : "对着屏幕吹一口气"}
               </motion.span>
               <motion.div
                 style={{ width: "1px", height: "18px", background: "rgba(255,255,255,0.50)", originY: 0 }}
@@ -516,6 +554,7 @@ export function Scene4_5Candle({ onBlown, onEnter }: Scene4_5CandleProps) {
               />
             </motion.div>
           )}
+
           {phase === "done" && (
             <motion.div
               key="scroll"
@@ -525,7 +564,11 @@ export function Scene4_5Candle({ onBlown, onEnter }: Scene4_5CandleProps) {
               transition={{ ...springGentle, delay: 0.3 }}
             >
               <motion.span
-                style={{ fontSize: "clamp(0.72rem, 1.4vw, 0.9rem)", letterSpacing: "0.35em", color: "rgba(255,255,255,0.75)" }}
+                style={{
+                  fontSize: "clamp(0.72rem, 1.4vw, 0.9rem)",
+                  letterSpacing: "0.35em",
+                  color: "rgba(255,255,255,0.75)",
+                }}
                 animate={{ opacity: [0.35, 1, 0.35], y: [0, -3, 0] }}
                 transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
               >
@@ -536,6 +579,128 @@ export function Scene4_5Candle({ onBlown, onEnter }: Scene4_5CandleProps) {
                 animate={{ scaleY: [0.2, 1, 0.2], opacity: [0.2, 0.8, 0.2] }}
                 transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
               />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showMicNotice && (
+            <motion.div
+              key="mic-notice"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 60,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "clamp(1rem, 4vw, 1.5rem)",
+                background: "rgba(6,6,10,0.38)",
+              }}
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 12, scale: 0.96, filter: "blur(10px)" }}
+                animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+                exit={{ opacity: 0, y: 12, scale: 0.98, filter: "blur(6px)" }}
+                transition={{ ...springGentle }}
+                style={{
+                  position: "relative",
+                  width: "min(26rem, 100%)",
+                  padding: "1.15rem 1rem 1rem",
+                  borderRadius: "1.35rem",
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  background: "linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.07) 100%)",
+                  backdropFilter: "blur(18px)",
+                  WebkitBackdropFilter: "blur(18px)",
+                  boxShadow: "0 18px 54px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.08)",
+                }}
+              >
+                <button
+                  type="button"
+                  aria-label="关闭麦克风提示"
+                  onClick={handleCloseMicNotice}
+                  style={{
+                    position: "absolute",
+                    top: "0.7rem",
+                    right: "0.7rem",
+                    width: "2rem",
+                    height: "2rem",
+                    borderRadius: "999px",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: "rgba(255,255,255,0.06)",
+                    color: "rgba(255,255,255,0.78)",
+                    fontSize: "1rem",
+                    lineHeight: 1,
+                  }}
+                >
+                  ×
+                </button>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", paddingRight: "2rem" }}>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: "clamp(0.96rem, 3.2vw, 1.05rem)",
+                        letterSpacing: "0.12em",
+                        color: "rgba(255,255,255,0.9)",
+                      }}
+                    >
+                      即将开启麦克风
+                    </p>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: "clamp(0.76rem, 2.8vw, 0.88rem)",
+                        lineHeight: 1.75,
+                        letterSpacing: "0.06em",
+                        color: "rgba(255,255,255,0.68)",
+                      }}
+                    >
+                      开启麦克风后可以吹灭蜡烛，但请注意音量变化，因系统限制会强制开启扬声器；如不方便，也可以轻触蜡烛让它熄灭。
+                    </p>
+                  </div>
+
+                  <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      onClick={handleEnableMic}
+                      style={{
+                        flex: "1 1 10rem",
+                        minHeight: "2.75rem",
+                        borderRadius: "999px",
+                        border: "1px solid rgba(255,255,255,0.18)",
+                        background: "rgba(255,255,255,0.12)",
+                        color: "rgba(255,255,255,0.92)",
+                        letterSpacing: "0.14em",
+                        fontSize: "0.82rem",
+                      }}
+                    >
+                      继续开启
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSkipMic}
+                      style={{
+                        flex: "1 1 10rem",
+                        minHeight: "2.75rem",
+                        borderRadius: "999px",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        background: "rgba(255,255,255,0.04)",
+                        color: "rgba(255,255,255,0.7)",
+                        letterSpacing: "0.12em",
+                        fontSize: "0.8rem",
+                      }}
+                    >
+                      改为轻触蜡烛
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>

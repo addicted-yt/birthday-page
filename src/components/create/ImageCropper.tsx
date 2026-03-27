@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import Cropper from "react-easy-crop";
 import { Area } from "react-easy-crop";
@@ -47,10 +47,7 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<string>
 export function ImageCropper({ src, onDone, onCancel }: ImageCropperProps) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [mounted, setMounted] = useState(false);
   const croppedAreaPixelsRef = useRef<Area | null>(null);
-
-  useEffect(() => { setMounted(true); }, []);
 
   const onCropComplete = useCallback((_: Area, croppedAreaPixels: Area) => {
     croppedAreaPixelsRef.current = croppedAreaPixels;
@@ -62,7 +59,7 @@ export function ImageCropper({ src, onDone, onCancel }: ImageCropperProps) {
     onDone(dataUrl);
   };
 
-  if (!mounted) return null;
+  if (typeof document === "undefined") return null;
 
   const content = (
     <div
@@ -116,4 +113,3 @@ export function ImageCropper({ src, onDone, onCancel }: ImageCropperProps) {
 
   return createPortal(content, document.body);
 }
-

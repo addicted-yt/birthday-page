@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef, useCallback, ReactNode } from "react";
+import { useEffect, useState, useRef, useCallback, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
@@ -49,38 +49,58 @@ export function ResultPageShell({
   onNavigateAway,
 }: ResultPageShellProps) {
   const router = useRouter();
-  const [data, setData] = useState<BirthdayData | null>(propData || null);
-  const [decodeError, setDecodeError] = useState(false);
+  const decodedFromUrl = !propData && encodedData ? decodeBirthdayData(encodedData, sessionId) : null;
+  const fallbackName = encodedName
+    ? (() => {
+        try {
+          return decodeURIComponent(encodedName);
+        } catch {
+          return encodedName;
+        }
+      })()
+    : "";
+  const [data, setData] = useState<BirthdayData | null>(
+    propData ||
+      decodedFromUrl ||
+      (encodedData
+        ? ({
+            v: 1,
+            name: fallbackName,
+            giftLetter: "",
+            cardPhotos: [],
+            giftImages: [],
+          } as BirthdayData)
+        : null)
+  );
+  const [decodeError] = useState(Boolean(!propData && encodedData && !decodedFromUrl));
   const [navigatingAway, setNavigatingAway] = useState(false);
-  const [candleBlown, setCandleBlown] = useState(false);
   const [giftOpened, setGiftOpened] = useState(false);
   const [endingVisible, setEndingVisible] = useState(false);
   const [musicOn, setMusicOn] = useState(false);
 
-  // 生日快乐歌（蜡烛幕）
   const birthdaySong = useAudioPlayer("/audio/birthday-song.mp3");
-  // 钢琴背景（礼物+信件+结尾）
   const pianoMusic = useAudioPlayer("/audio/gift-bgm.mp3");
 
   const birthdaySongStarted = useRef(false);
+  const birthdayFadePromiseRef = useRef<Promise<void> | null>(null);
+  const birthdayExitedCakeRef = useRef(false);
   const pianoStarted = useRef(false);
 
   const giftRef = useRef<HTMLDivElement>(null);
-  const scene5Ref = useRef<HTMLDivElement>(null);
-  const scene5PhotosRef = useRef<HTMLDivElement>(null);
+  const scene5Ref = useRef<HTMLElement | null>(null);
+  const scene5PhotosRef = useRef<HTMLElement | null>(null);
 
-  // 分享链接
   const shareUrl =
     typeof window !== "undefined" && encodedData
       ? `${window.location.origin}/result?d=${encodedData}&sid=${sessionId ?? ""}${encodedName ? `&name=${encodedName}` : ""}`
       : "";
 
-  // 清理首次交互监听器（navigate away 时用）
-  const { cancel: cancelFirstInteraction } = useFirstInteraction(useCallback(() => {
-    // 无需补播逻辑：音乐由用户滚动手势触发，不受 autoplay 策略限制
-  }, []));
+  const { cancel: cancelFirstInteraction } = useFirstInteraction(
+    useCallback(() => {
+      // Result-page audio is driven by user gestures inside the scene flow.
+    }, [])
+  );
 
-  // 移动端：首次 touchstart 解锁音频（iOS/微信 WebView 需要在手势内调用 play）
   useEffect(() => {
     if (typeof window === "undefined" || !("ontouchstart" in window)) return;
     const unlock = () => {
@@ -92,94 +112,98 @@ export function ResultPageShell({
   }, [birthdaySong, pianoMusic]);
 
   useEffect(() => {
-    if (!propData && encodedData) {
-      const decoded = decodeBirthdayData(encodedData, sessionId);
-      if (decoded) {
-        setData(decoded);
-      } else {
-        // 解码失败：尝试用 URL name 参数构造最小数据，至少能显示姓名
-        const fallbackName = encodedName ? (() => { try { return decodeURIComponent(encodedName); } catch { return encodedName; } })() : "";
-        setData({
-          v: 1,
-          name: fallbackName,
-          giftLetter: "",
-          cardPhotos: [],
-          giftImages: [],
-        } as BirthdayData);
-        setDecodeError(true);
-      }
-    }
-  }, [encodedData, sessionId, propData, encodedName]);
-
-  // 解码完成后，异步填充图片 dataUrl（先查 IndexedDB，再从 R2 拉取）
-  useEffect(() => {
     if (!data) return;
     const hasImageKeys =
-      data.cardPhotos.some((p) => p.imageKey && !p.dataUrl) ||
-      data.giftImages.some((g) => g.imageKey && !g.dataUrl);
+      data.cardPhotos.some((photo) => photo.imageKey && !photo.dataUrl) ||
+      data.giftImages.some((image) => image.imageKey && !image.dataUrl);
     if (!hasImageKeys) return;
 
     let cancelled = false;
     (async () => {
       const cardPhotos = await Promise.all(
-        data.cardPhotos.map(async (p) => {
-          if (p.dataUrl || !p.imageKey) return p;
-          const url = await idbGet(p.imageKey) ?? await fetchImageFromR2(p.imageKey);
-          return url ? { ...p, dataUrl: url } : p;
+        data.cardPhotos.map(async (photo) => {
+          if (photo.dataUrl || !photo.imageKey) return photo;
+          const url = (await idbGet(photo.imageKey)) ?? (await fetchImageFromR2(photo.imageKey));
+          return url ? { ...photo, dataUrl: url } : photo;
         })
       );
+
       const giftImages = await Promise.all(
-        data.giftImages.map(async (g) => {
-          if (g.dataUrl || !g.imageKey) return g;
-          const url = await idbGet(g.imageKey) ?? await fetchImageFromR2(g.imageKey);
-          return url ? { ...g, dataUrl: url } : g;
+        data.giftImages.map(async (image) => {
+          if (image.dataUrl || !image.imageKey) return image;
+          const url = (await idbGet(image.imageKey)) ?? (await fetchImageFromR2(image.imageKey));
+          return url ? { ...image, dataUrl: url } : image;
         })
       );
-      if (!cancelled) setData((prev) => prev ? { ...prev, cardPhotos, giftImages } : prev);
+
+      if (!cancelled) {
+        setData((prev) => (prev ? { ...prev, cardPhotos, giftImages } : prev));
+      }
     })();
-    return () => { cancelled = true; };
-  }, [data?.cardPhotos.map(p => p.imageKey).join(","), data?.giftImages.map(g => g.imageKey).join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    return () => {
+      cancelled = true;
+    };
+  }, [data?.cardPhotos.map((photo) => photo.imageKey).join(","), data?.giftImages.map((image) => image.imageKey).join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const ensureBirthdaySongStopped = useCallback(() => {
+    if (birthdayFadePromiseRef.current) return birthdayFadePromiseRef.current;
+    if (!birthdaySongStarted.current) return Promise.resolve();
+
+    birthdayFadePromiseRef.current = new Promise<void>((resolve) => {
+      birthdaySong.fadeOut(() => {
+        birthdaySongStarted.current = false;
+        birthdayFadePromiseRef.current = null;
+        resolve();
+      });
+    });
+
+    return birthdayFadePromiseRef.current;
+  }, [birthdaySong]);
+
   const handleCandleEnter = useCallback(() => {
     if (birthdaySongStarted.current) return;
+    birthdayExitedCakeRef.current = false;
     birthdaySongStarted.current = true;
     birthdaySong.fadeIn(0.72);
     setMusicOn(true);
   }, [birthdaySong]);
 
-  // 蜡烛吹灭：生日歌淡出 → 平滑切到礼物幕
   const handleCandleBlown = useCallback(() => {
-    setCandleBlown(true);
-    birthdaySong.fadeOut();
-    // 滚动到礼物幕
+    birthdayExitedCakeRef.current = true;
+    void ensureBirthdaySongStopped();
     requestAnimationFrame(() => {
       giftRef.current?.scrollIntoView({ behavior: "smooth" });
     });
-  }, [birthdaySong]);
+  }, [ensureBirthdaySongStopped]);
 
-  // 进入礼物幕：确保 birthdaySong 停止（处理快速滑动绕过蜡烛幕的情况）
   const handleGiftEnter = useCallback(() => {
-    if (birthdaySongStarted.current && birthdaySong.isPlaying()) {
-      birthdaySong.fadeOut();
+    if (birthdayExitedCakeRef.current) {
+      void ensureBirthdaySongStopped();
     }
-  }, [birthdaySong]);
+  }, [ensureBirthdaySongStopped]);
 
   const handleGiftOpen = useCallback(() => {
-    setGiftOpened(true);
-    // 如果因为某种原因钢琴还没启动（跳过蜡烛幕），现在启动
-    if (!pianoStarted.current) {
-      pianoStarted.current = true;
-      pianoMusic.fadeIn(0.65);
+    const openGiftFlow = async () => {
+      setGiftOpened(true);
+      await ensureBirthdaySongStopped();
+      if (!pianoStarted.current) {
+        pianoStarted.current = true;
+        pianoMusic.fadeIn(0.65);
+      }
       setMusicOn(true);
-    }
-    requestAnimationFrame(() => {
-      scene5Ref.current?.scrollIntoView({ behavior: "smooth" });
-    });
-  }, [pianoMusic]);
+      requestAnimationFrame(() => {
+        scene5Ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    };
+
+    void openGiftFlow();
+  }, [ensureBirthdaySongStopped, pianoMusic]);
 
   const handleLetterDone = useCallback(() => {
     if (!scene5PhotosRef.current) return;
     setTimeout(() => {
-      scene5PhotosRef.current?.scrollIntoView({ behavior: "smooth" });
+      scene5PhotosRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 300);
   }, []);
 
@@ -189,29 +213,48 @@ export function ResultPageShell({
 
   const handleNavigateAway = useCallback(() => {
     cancelFirstInteraction();
-    // 只有音乐已启动才淡出，避免无声时也触发
-    if (birthdaySongStarted.current && birthdaySong.isPlaying()) birthdaySong.fadeOut();
-    if (pianoStarted.current && pianoMusic.isPlaying()) pianoMusic.fadeOut();
+    birthdaySong.stop();
+    pianoMusic.stop();
+    setMusicOn(false);
     onNavigateAway?.();
   }, [birthdaySong, pianoMusic, cancelFirstInteraction, onNavigateAway]);
 
   const handleGoHome = useCallback(() => {
     cancelFirstInteraction();
-    if (birthdaySongStarted.current && birthdaySong.isPlaying()) birthdaySong.fadeOut();
-    if (pianoStarted.current && pianoMusic.isPlaying()) pianoMusic.fadeOut();
+    birthdaySong.stop();
+    pianoMusic.stop();
+    setMusicOn(false);
     setNavigatingAway(true);
     setTimeout(() => router.push("/"), 380);
   }, [birthdaySong, pianoMusic, cancelFirstInteraction, router]);
 
-  // 音乐开关（结尾控制的是当前正在播放的音轨）
   const handleMusicToggle = useCallback(() => {
     if (pianoStarted.current) {
       pianoMusic.toggle();
     } else if (birthdaySongStarted.current) {
       birthdaySong.toggle();
     }
-    setMusicOn((v) => !v);
+    setMusicOn((value) => !value);
   }, [pianoMusic, birthdaySong]);
+
+  useEffect(() => {
+    const onHide = () => {
+      birthdaySong.stop();
+      pianoMusic.stop();
+      setMusicOn(false);
+    };
+
+    const onVisibility = () => {
+      if (document.hidden) onHide();
+    };
+
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", onHide);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", onHide);
+    };
+  }, [birthdaySong, pianoMusic]);
 
   if (!data) {
     return (
@@ -221,9 +264,8 @@ export function ResultPageShell({
     );
   }
 
-  // 解码失败时显示友好提示（移动端 URL 截断等情况）
   if (decodeError && !data.giftLetter && data.cardPhotos.length === 0) {
-    // 仍然继续渲染，只是内容会是空的，不卡在 loading
+    // Keep rendering a minimal result shell instead of trapping the user on loading.
   }
 
   const cardPhotos = (() => {
@@ -231,10 +273,11 @@ export function ResultPageShell({
     const phrases: string[] = Array.isArray(data.placeholderPhrases)
       ? data.placeholderPhrases
       : data.placeholderPhrase
-      ? [data.placeholderPhrase]
-      : [];
-    return getDefaultCardPlaceholders(phrases).map(({ dataUrl, phrase }, i) => {
-      const style = data.placeholderStyles?.[i];
+        ? [data.placeholderPhrase]
+        : [];
+
+    return getDefaultCardPlaceholders(phrases).map(({ dataUrl, phrase }, index) => {
+      const style = data.placeholderStyles?.[index];
       return {
         dataUrl,
         caption: phrase || undefined,
@@ -252,7 +295,6 @@ export function ResultPageShell({
       <CosmicBackground />
       <PageTransitionOverlay leaving={navigatingAway} entering />
 
-      {/* 返回首页按钮 — Demo 页常驻左上角 */}
       {showHomeButton && (
         <motion.button
           className="fixed z-50 flex items-center gap-2"
@@ -277,12 +319,14 @@ export function ResultPageShell({
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
             <path d="M8.5 2.5L4 7l4.5 4.5" stroke="rgba(255,255,255,0.65)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          <span style={{
-            fontSize: "clamp(0.72rem, 1.5vw, 0.85rem)",
-            letterSpacing: "0.15em",
-            color: "rgba(255,255,255,0.65)",
-            whiteSpace: "nowrap",
-          }}>
+          <span
+            style={{
+              fontSize: "clamp(0.72rem, 1.5vw, 0.85rem)",
+              letterSpacing: "0.15em",
+              color: "rgba(255,255,255,0.65)",
+              whiteSpace: "nowrap",
+            }}
+          >
             首页
           </span>
         </motion.button>
@@ -292,42 +336,28 @@ export function ResultPageShell({
       <Scene2Title name={data.name} />
       <Scene3Cards cardPhotos={cardPhotos} />
 
-      {/* 蜡烛幕（Scene4.5）*/}
-      <Scene4_5Candle
-        onEnter={handleCandleEnter}
-        onBlown={handleCandleBlown}
-      />
+      <Scene4_5Candle onEnter={handleCandleEnter} onBlown={handleCandleBlown} />
 
-      {/* 礼物幕（蜡烛吹灭后才能滚动到，未吹灭时仍存在但被蜡烛幕阻挡） */}
       <div ref={giftRef}>
         <Scene4Gift onOpen={handleGiftOpen} onEnter={handleGiftEnter} />
       </div>
 
-      <div ref={scene5Ref}>
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={giftOpened ? { opacity: 1 } : { opacity: 0 }}
-          transition={{ ...springGentle, delay: 0.3 }}
-        >
-          <Scene5Letter
-            giftLetter={data.giftLetter}
-            letterAlign={data.letterAlign}
-            hasPhotos={data.giftImages.length > 0}
-            started={giftOpened}
-            onLetterDone={data.giftImages.length > 0 ? handleLetterDone : undefined}
-          />
-          {data.giftImages.length > 0 && (
-            <div ref={scene5PhotosRef}>
-              <Scene5Photos giftImages={data.giftImages} />
-            </div>
-          )}
-        </motion.div>
-      </div>
+      <Scene5Letter
+        sectionRef={scene5Ref}
+        giftLetter={data.giftLetter}
+        letterAlign={data.letterAlign}
+        hasPhotos={data.giftImages.length > 0}
+        started={giftOpened}
+        onLetterDone={data.giftImages.length > 0 ? handleLetterDone : undefined}
+      />
+
+      {data.giftImages.length > 0 && (
+        <Scene5Photos sectionRef={scene5PhotosRef} giftImages={data.giftImages} />
+      )}
 
       <Scene6Uplift />
       <Scene7Ending name={data.name} onVisible={handleEndingVisible} />
 
-      {/* 音乐开关提示 — 结尾出现后常驻 */}
       <AnimatePresence>
         {endingVisible && (
           <motion.button
@@ -354,7 +384,6 @@ export function ResultPageShell({
         )}
       </AnimatePresence>
 
-      {/* Demo 结尾 CTA */}
       <AnimatePresence>
         {endingCTA && endingVisible && (
           <motion.div
@@ -368,7 +397,6 @@ export function ResultPageShell({
         )}
       </AnimatePresence>
 
-      {/* 创作者悬浮操作栏 */}
       {isCreator && shareUrl && (
         <CreatorToolbar shareUrl={shareUrl} sessionId={sessionId} onNavigateAway={handleNavigateAway} />
       )}

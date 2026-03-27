@@ -315,17 +315,14 @@ export function Scene3Cards({ cardPhotos }: Scene3CardsProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [brightSet, setBrightSet] = useState<Set<number>>(new Set());
   const [containerW, setContainerW] = useState(0);
-  const [isMobileDevice, setIsMobileDevice] = useState(false);
+  const [isMobileDevice] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+  });
   const touchRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
   // 移动端：记录触摸起点，用于区分点击和滑动
   const containerTouchStart = useRef<{ x: number; y: number } | null>(null);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setIsMobileDevice(window.matchMedia("(hover: none) and (pointer: coarse)").matches);
-    }
-  }, []);
 
   // 监听容器宽度
   useEffect(() => {
@@ -387,8 +384,8 @@ export function Scene3Cards({ cardPhotos }: Scene3CardsProps) {
     const cx = rect.width / 2;
     const cy = rect.height / 2;
     // 卡片堆的近似尺寸 + padding 60px
-    const hitW = Math.min(160, rect.width * 0.42) * 1.2 + 60;
-    const hitH = Math.min(260, rect.height) * 0.9 + 60;
+    const hitW = Math.min(180, rect.width * 0.46) * 1.25 + 72;
+    const hitH = Math.min(rect.height + 140, Math.max(300, rect.height * 1.35));
     if (Math.abs(relX - cx) > hitW / 2 || Math.abs(relY - cy) > hitH / 2) return;
 
     touchRef.current = true;

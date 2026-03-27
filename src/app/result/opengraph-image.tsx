@@ -12,11 +12,17 @@ export default async function Image({
   searchParams: Promise<{ d?: string; name?: string }>;
 }) {
   const params = await searchParams;
+  const safeDecode = (value: string) => {
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return value;
+    }
+  };
 
-  // 从 URL 参数中提取名字（轻量解码，避免引入 lz-string 到 edge）
   let name = "你";
   if (params.name) {
-    name = decodeURIComponent(params.name);
+    name = safeDecode(params.name);
   }
 
   return new ImageResponse(
@@ -34,7 +40,6 @@ export default async function Image({
           overflow: "hidden",
         }}
       >
-        {/* 星云光晕 */}
         <div
           style={{
             position: "absolute",
@@ -58,7 +63,6 @@ export default async function Image({
           }}
         />
 
-        {/* 内容区 */}
         <div
           style={{
             display: "flex",
@@ -67,7 +71,6 @@ export default async function Image({
             gap: "28px",
           }}
         >
-          {/* HAPPY BIRTHDAY 小标题 */}
           <div
             style={{
               fontSize: "18px",
@@ -80,7 +83,6 @@ export default async function Image({
             HAPPY BIRTHDAY
           </div>
 
-          {/* 名字大字 */}
           <div
             style={{
               fontSize: "120px",
@@ -94,7 +96,6 @@ export default async function Image({
             {name}
           </div>
 
-          {/* 分隔线 */}
           <div
             style={{
               width: "48px",
@@ -103,7 +104,6 @@ export default async function Image({
             }}
           />
 
-          {/* 副文案 */}
           <div
             style={{
               fontSize: "18px",
@@ -117,7 +117,6 @@ export default async function Image({
           </div>
         </div>
 
-        {/* crafted by yt */}
         <div
           style={{
             position: "absolute",
