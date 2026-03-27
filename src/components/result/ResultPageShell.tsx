@@ -94,14 +94,13 @@ export function ResultPageShell({
 
   const shareUrl =
     typeof window !== "undefined" && encodedData
-      ? `${window.location.origin}/result?d=${encodedData}&sid=${sessionId ?? ""}${encodedName ? `&name=${encodedName}` : ""}`
+      ? `${window.location.origin}/result?d=${encodedData}${encodedName ? `&name=${encodedName}` : ""}`
       : "";
 
   const { cancel: cancelFirstInteraction } = useFirstInteraction(
     useCallback(() => {
       birthdaySong.unlock();
-      pianoMusic.unlock();
-    }, [birthdaySong, pianoMusic])
+    }, [birthdaySong])
   );
 
   useEffect(() => {
@@ -232,6 +231,8 @@ export function ResultPageShell({
   const handleMusicToggle = useCallback(() => {
     if (pianoStarted.current || giftOpened || activeTrackRef.current === "gift") {
       const willPlay = !pianoMusic.isPlaying();
+      birthdaySong.stop();
+      birthdaySongStarted.current = false;
       pianoMusic.toggle();
       setMusicOn(willPlay);
     } else if (birthdaySongStarted.current || activeTrackRef.current === "birthday") {

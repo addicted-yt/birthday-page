@@ -32,11 +32,17 @@ export function useAudioPlayer(src: string) {
     if (!audio) return;
     unlockedRef.current = true;
     // play 再立即 pause，解锁 AudioContext；同时保证 currentTime 归零
+    const prevMuted = audio.muted;
+    const prevVolume = audio.volume;
+    audio.muted = true;
+    audio.volume = 0;
     const p = audio.play();
     if (p) {
       p.then(() => {
         audio.pause();
         audio.currentTime = 0;
+        audio.muted = prevMuted;
+        audio.volume = prevVolume;
       }).catch(() => {});
     }
   }, [getAudio]);
