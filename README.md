@@ -1,4 +1,4 @@
-# 🎂 Birthday Page
+# 🎂 thesedays--Birthday Page
 
 > **有些话说不出口，就让代码替你表达 💫**
 >
@@ -22,16 +22,15 @@
 <p align="center">
   一份沉浸式生日体验 —— 可定制 · 可分享 · 感动每一刻
 </p>
-
-
 用几分钟为 TA 制作一份专属生日祝福：上传照片、写下心里话，生成一段浪漫的星空动画贺卡，通过链接分享给重要的人。
 
 <p align="center">
   <a href="https://happybirthday-alpha-gules.vercel.app/">🌐 免费在线使用 - Vercel</a> · <a href="https://happy-birthday.65751062.workers.dev/">☁️ 免费在线使用 - Cloudflare</a>
   <br />
   <span style="font-size:12px;color:#888;">⚠️ 国内访问可能需要科学上网 · 推荐使用电脑端体验，移动端适配优化中</span>
+  <br />
+  <span style="font-size:12px;color:#f59e0b;">⚠️ Vercel 版本暂不支持图片云存储，分享链接中可能无法显示图片，推荐使用 Cloudflare 版本</span>
 </p>
-
 
 
 ---
@@ -39,11 +38,20 @@
 ## ✨ 功能特性
 
 - **📸 照片卡片** — 上传照片，添加个性化文字标注，自定义位置、颜色、大小
+- **✂️ 图片裁剪** — 内置裁剪工具，自由调整照片构图
+- **📦 批量上传** — 支持多张照片同时上传，省时省力
+- **🧠 智能压缩** — 自动压缩图片（最长边 ≤900px，JPEG 质量 0.82），保证清晰度的同时提升加载速度
+- **✍️ 文字标注** — 贺卡文字可自定义位置、对齐方式（左/中/右）、字号和颜色
 - **🎵 背景音乐** — 生日快乐歌 + 钢琴曲自动切换，营造沉浸式氛围
+- **🔊 音频自动播放适配** — 针对移动端浏览器自动播放限制（iOS、微信 WebView 等），首次交互后解锁音频播放
 - **🕯️ 吹蜡烛互动** — 滚动触发蜡烛动画，点击/触摸吹灭蜡烛解锁下一幕
-- **🎁 礼物开启动画** — 点击打开礼物，展示手写信和珍藏照片
+- **🎁 礼物开启动画** — 点击打开礼物，展示信和珍藏照片
 - **🌌 星空背景** — 粒子动画 + 宇宙主题，视觉沉浸感拉满
+- **🎞️ 页面过渡** — 场景之间流畅的转场动画，沉浸式体验
 - **🔗 一键分享** — 生成链接发给 TA，无需登录即可查看
+- **☁️ 云存储** — 云端保存图片（云端15天自动删除），分享链接永久有效；本地使用 IndexedDB 缓存加速加载
+- **🛠️ 创作者工具栏** — 预览页面浮动工具栏，支持继续编辑和快速分享
+- **🎬 演示页面** — 内置完整 Demo，无需制作即可预览全部效果
 - **📱 响应式设计** — 手机、平板、电脑完美适配
 
 ---
@@ -59,6 +67,8 @@
 | [Framer Motion](https://www.framer.com/motion/) | 动画引擎 |
 | [lz-string](https://github.com/pieroxy/lz-string) | URL 数据压缩 |
 | [react-easy-crop](https://github.com/ricardo-ch/react-easy-crop) | 图片裁剪 |
+| [Cloudflare R2](https://developers.cloudflare.com/r2/) | 图片云存储 |
+| [IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API) | 本地图片缓存 |
 
 ---
 
@@ -98,11 +108,11 @@ npm run dev
 ```
 Step 1: 输入 TA 的名字
     ↓
-Step 2: 上传照片（可选裁剪）
+Step 2: 上传照片（支持批量上传，可选裁剪，自动压缩）
     ↓
-Step 3: 为照片添加文字标注
+Step 3: 为照片添加文字标注（自定义位置、对齐、字号、颜色）
     ↓
-Step 4: 写一封手写信
+Step 4: 写一封信
     ↓
 Step 5: 添加珍藏照片（可选）
     ↓
