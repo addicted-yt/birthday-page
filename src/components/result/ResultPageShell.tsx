@@ -88,7 +88,7 @@ export function ResultPageShell({
   const micPromptActiveRef = useRef(false);
   const pianoStarted = useRef(false);
 
-  const giftRef = useRef<HTMLDivElement>(null);
+  const giftRef = useRef<HTMLElement | null>(null);
   const scene5Ref = useRef<HTMLElement | null>(null);
   const scene5PhotosRef = useRef<HTMLElement | null>(null);
 
@@ -99,19 +99,10 @@ export function ResultPageShell({
 
   const { cancel: cancelFirstInteraction } = useFirstInteraction(
     useCallback(() => {
-      // Result-page audio is driven by user gestures inside the scene flow.
-    }, [])
-  );
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !("ontouchstart" in window)) return;
-    const unlock = () => {
       birthdaySong.unlock();
       pianoMusic.unlock();
-    };
-    document.addEventListener("touchstart", unlock, { once: true, passive: true });
-    return () => document.removeEventListener("touchstart", unlock);
-  }, [birthdaySong, pianoMusic]);
+    }, [birthdaySong, pianoMusic])
+  );
 
   useEffect(() => {
     if (!data) return;
@@ -356,9 +347,7 @@ export function ResultPageShell({
         onMicPromptChange={handleMicPromptChange}
       />
 
-      <div ref={giftRef}>
-        <Scene4Gift onOpen={handleGiftOpen} onEnter={handleGiftEnter} />
-      </div>
+      <Scene4Gift sectionRef={giftRef} onOpen={handleGiftOpen} onEnter={handleGiftEnter} />
 
       <Scene5Letter
         sectionRef={scene5Ref}

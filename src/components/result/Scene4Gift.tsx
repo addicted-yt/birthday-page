@@ -1,6 +1,6 @@
 "use client";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type MutableRefObject } from "react";
 import { springGentle } from "@/lib/animationPresets";
 import { EmojiImage } from "@/components/ui/EmojiImage";
 
@@ -16,14 +16,17 @@ interface GiftParticle {
 interface Scene4GiftProps {
   onOpen: () => void;
   onEnter?: () => void;
+  sectionRef?: MutableRefObject<HTMLElement | null>;
 }
 
-export function Scene4Gift({ onOpen, onEnter }: Scene4GiftProps) {
+export function Scene4Gift({ onOpen, onEnter, sectionRef: externalSectionRef }: Scene4GiftProps) {
   const [opened, setOpened] = useState(false);
   const [particles, setParticles] = useState<GiftParticle[]>([]);
   const hasOpened = useRef(false);
-  const sectionRef = useRef<HTMLElement>(null);
+  const internalSectionRef = useRef<HTMLElement | null>(null);
   const touchStartY = useRef(0);
+  const giftTouchStart = useRef<{ x: number; y: number } | null>(null);
+  const giftTapRef = useRef(true);
   const onEnterRef = useRef(onEnter);
 
   useEffect(() => {
@@ -32,7 +35,7 @@ export function Scene4Gift({ onOpen, onEnter }: Scene4GiftProps) {
 
   // 进入视口时通知外部（用于停止 birthdaySong）
   useEffect(() => {
-    const el = sectionRef.current;
+    const el = internalSectionRef.current;
     if (!el) return;
     const obs = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) onEnterRef.current?.(); },
@@ -44,7 +47,7 @@ export function Scene4Gift({ onOpen, onEnter }: Scene4GiftProps) {
 
   // 未打开时阻止向下滚动（wheel + touchmove）
   useEffect(() => {
-    const el = sectionRef.current;
+    const el = internalSectionRef.current;
     if (!el) return;
 
     const onWheel = (e: WheelEvent) => {
@@ -89,9 +92,35 @@ export function Scene4Gift({ onOpen, onEnter }: Scene4GiftProps) {
     setTimeout(() => onOpen(), 1400);
   };
 
+  const handleGiftTouchStart = (event: React.TouchEvent) => {
+    giftTouchStart.current = {
+      x: event.touches[0].clientX,
+      y: event.touches[0].clientY,
+    };
+    giftTapRef.current = true;
+  };
+
+  const handleGiftTouchMove = (event: React.TouchEvent) => {
+    if (!giftTouchStart.current) return;
+    const dx = Math.abs(event.touches[0].clientX - giftTouchStart.current.x);
+    const dy = Math.abs(event.touches[0].clientY - giftTouchStart.current.y);
+    if (dx > 10 || dy > 10) {
+      giftTapRef.current = false;
+    }
+  };
+
+  const handleGiftTouchEnd = () => {
+    giftTouchStart.current = null;
+  };
+
   return (
     <section
-      ref={sectionRef}
+      ref={(node) => {
+        internalSectionRef.current = node;
+        if (externalSectionRef) {
+          externalSectionRef.current = node;
+        }
+      }}
       className="scroll-snap-start flex items-center justify-center relative"
       style={{ zIndex: 10, touchAction: opened ? "auto" : "none" }}
     >
@@ -134,7 +163,14 @@ export function Scene4Gift({ onOpen, onEnter }: Scene4GiftProps) {
           transition={{ ...springGentle, delay: 0.7 }}
           whileHover={opened ? {} : { scale: 1.07 }}
           whileTap={opened ? {} : { scale: 0.92 }}
-          onClick={handleOpen}
+          onClick={() => {
+            if ("ontouchstart" in window && !giftTapRef.current) return;
+            handleOpen();
+          }}
+          onTouchStart={handleGiftTouchStart}
+          onTouchMove={handleGiftTouchMove}
+          onTouchEnd={handleGiftTouchEnd}
+          onTouchCancel={handleGiftTouchEnd}
         >
           {/* 脉冲光环 */}
           {!opened && (

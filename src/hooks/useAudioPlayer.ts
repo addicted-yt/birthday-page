@@ -27,7 +27,7 @@ export function useAudioPlayer(src: string) {
   // 移动端首次用户手势时调用，静默 play/pause 解锁 iOS 音频限制
   const unlock = useCallback(() => {
     if (unlockedRef.current) return;
-    if (typeof window === "undefined" || !("ontouchstart" in window)) return;
+    if (typeof window === "undefined") return;
     const audio = getAudio();
     if (!audio) return;
     unlockedRef.current = true;

@@ -359,6 +359,11 @@ export function Scene3Cards({ cardPhotos }: Scene3CardsProps) {
     setBrightSet((prev) => new Set(prev).add(i));
   };
 
+  const toggleFan = () => {
+    touchRef.current = true;
+    setIsHovered((v) => !v);
+  };
+
   const handleContainerTouchStart = (e: React.TouchEvent) => {
     containerTouchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   };
@@ -389,8 +394,7 @@ export function Scene3Cards({ cardPhotos }: Scene3CardsProps) {
     const normalizedY = (relY - cy) / (hitH / 2);
     if (normalizedX * normalizedX + normalizedY * normalizedY > 1) return;
 
-    touchRef.current = true;
-    setIsHovered((v) => !v);
+    toggleFan();
   };
 
   const expandedPhoto = expandedIndex !== null ? cardPhotos[expandedIndex] : null;
@@ -440,9 +444,22 @@ export function Scene3Cards({ cardPhotos }: Scene3CardsProps) {
         transition={{ ...springGentle, delay: 0.2 }}
         onHoverStart={() => setIsHovered(true)}
         onHoverEnd={() => { if (!touchRef.current) setIsHovered(false); }}
-        onTouchStart={isMobileDevice ? handleContainerTouchStart : undefined}
-        onTouchEnd={isMobileDevice ? handleContainerTouchEnd : undefined}
       >
+        {isMobileDevice && expandedIndex === null && (
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+              width: "min(320px, 82vw)",
+              height: "min(420px, 96vw)",
+              zIndex: 8,
+            }}
+            onTouchStart={handleContainerTouchStart}
+            onTouchEnd={handleContainerTouchEnd}
+          />
+        )}
         {cardPhotos.map((photo, i) => {
           const { expandedX, expandedY, expandedRotate } = getExpandedProps(i, cardPhotos.length);
           return (

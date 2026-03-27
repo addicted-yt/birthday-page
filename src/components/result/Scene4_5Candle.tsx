@@ -290,14 +290,12 @@ export function Scene4_5Candle({ onBlown, onEnter, onMicPromptChange }: Scene4_5
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 256;
       source.connect(analyser);
-      void ctx.suspend().catch(() => {});
 
       const samples = new Uint8Array(analyser.frequencyBinCount);
       let loudCount = 0;
 
       const check = () => {
         if (hasBlownRef.current) return;
-        if (ctx.state === "suspended") void ctx.resume().catch(() => {});
         analyser.getByteFrequencyData(samples);
         const avg = samples.reduce((sum, value) => sum + value, 0) / samples.length;
         if (avg > 62) {

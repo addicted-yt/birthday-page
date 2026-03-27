@@ -9,6 +9,7 @@ html {
   background: var(--background);
   color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+  overflow-x: hidden;
 }
 
 body {
@@ -16,6 +17,7 @@ body {
   color: var(--foreground);
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   /* 防止iOS橡皮筋效果破坏scroll-snap */
@@ -26,6 +28,7 @@ body {
 .scroll-snap-y {
   scroll-snap-type: y mandatory;
   overflow-y: scroll;
+  overflow-x: hidden;
   height: 100dvh;
   overscroll-behavior-y: none;
 }

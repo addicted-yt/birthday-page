@@ -13,7 +13,7 @@ export function useFirstInteraction(callback: () => void) {
   }, []);
 
   useEffect(() => {
-    const events = ["click", "touchstart", "keydown"] as const;
+    const events = ["click", "touchstart", "keydown", "wheel"] as const;
     const once = { once: true };
     events.forEach((e) => document.addEventListener(e, handler, once));
     return () => {
