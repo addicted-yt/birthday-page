@@ -84,6 +84,8 @@ export function ResultPageShell({
   const birthdaySongStarted = useRef(false);
   const birthdayFadePromiseRef = useRef<Promise<void> | null>(null);
   const birthdayExitedCakeRef = useRef(false);
+  const activeTrackRef = useRef<"birthday" | "gift" | null>(null);
+  const micPromptActiveRef = useRef(false);
   const pianoStarted = useRef(false);
 
   const giftRef = useRef<HTMLDivElement>(null);
@@ -153,6 +155,10 @@ export function ResultPageShell({
     birthdayFadePromiseRef.current = new Promise<void>((resolve) => {
       birthdaySong.fadeOut(() => {
         birthdaySongStarted.current = false;
+        if (activeTrackRef.current === "birthday") {
+          activeTrackRef.current = null;
+        }
+        setMusicOn(false);
         birthdayFadePromiseRef.current = null;
         resolve();
       });
@@ -165,6 +171,7 @@ export function ResultPageShell({
     if (birthdaySongStarted.current) return;
     birthdayExitedCakeRef.current = false;
     birthdaySongStarted.current = true;
+    activeTrackRef.current = "birthday";
     birthdaySong.fadeIn(0.72);
     setMusicOn(true);
   }, [birthdaySong]);
@@ -178,9 +185,8 @@ export function ResultPageShell({
   }, [ensureBirthdaySongStopped]);
 
   const handleGiftEnter = useCallback(() => {
-    if (birthdayExitedCakeRef.current) {
-      void ensureBirthdaySongStopped();
-    }
+    birthdayExitedCakeRef.current = true;
+    void ensureBirthdaySongStopped();
   }, [ensureBirthdaySongStopped]);
 
   const handleGiftOpen = useCallback(() => {
@@ -189,7 +195,10 @@ export function ResultPageShell({
       await ensureBirthdaySongStopped();
       if (!pianoStarted.current) {
         pianoStarted.current = true;
+        activeTrackRef.current = "gift";
         pianoMusic.fadeIn(0.65);
+      } else {
+        activeTrackRef.current = "gift";
       }
       setMusicOn(true);
       requestAnimationFrame(() => {
@@ -229,23 +238,28 @@ export function ResultPageShell({
   }, [birthdaySong, pianoMusic, cancelFirstInteraction, router]);
 
   const handleMusicToggle = useCallback(() => {
-    if (pianoStarted.current) {
+    if (pianoStarted.current || giftOpened || activeTrackRef.current === "gift") {
       pianoMusic.toggle();
-    } else if (birthdaySongStarted.current) {
+    } else if (birthdaySongStarted.current || activeTrackRef.current === "birthday") {
       birthdaySong.toggle();
     }
     setMusicOn((value) => !value);
-  }, [pianoMusic, birthdaySong]);
+  }, [giftOpened, pianoMusic, birthdaySong]);
+
+  const handleMicPromptChange = useCallback((active: boolean) => {
+    micPromptActiveRef.current = active;
+  }, []);
 
   useEffect(() => {
     const onHide = () => {
       birthdaySong.stop();
       pianoMusic.stop();
+      activeTrackRef.current = null;
       setMusicOn(false);
     };
 
     const onVisibility = () => {
-      if (document.hidden) onHide();
+      if (document.hidden && !micPromptActiveRef.current) onHide();
     };
 
     document.addEventListener("visibilitychange", onVisibility);
@@ -336,7 +350,11 @@ export function ResultPageShell({
       <Scene2Title name={data.name} />
       <Scene3Cards cardPhotos={cardPhotos} />
 
-      <Scene4_5Candle onEnter={handleCandleEnter} onBlown={handleCandleBlown} />
+      <Scene4_5Candle
+        onEnter={handleCandleEnter}
+        onBlown={handleCandleBlown}
+        onMicPromptChange={handleMicPromptChange}
+      />
 
       <div ref={giftRef}>
         <Scene4Gift onOpen={handleGiftOpen} onEnter={handleGiftEnter} />

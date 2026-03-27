@@ -107,7 +107,7 @@ export function Scene4Gift({ onOpen, onEnter }: Scene4GiftProps) {
               animate={{ x: p.x, y: p.y, opacity: 0, scale: p.scale, rotate: p.rotation }}
               transition={{ duration: 1.2, ease: "easeOut" }}
             >
-              <EmojiImage emoji={p.emoji} size={36} />
+            <EmojiImage emoji={p.emoji} size={36} />
             </motion.div>
           ))}
         </AnimatePresence>
@@ -172,7 +172,7 @@ export function Scene4Gift({ onOpen, onEnter }: Scene4GiftProps) {
                 : { duration: 3.5, repeat: Infinity, ease: "easeInOut" }
             }
           >
-            <EmojiImage emoji="gift" size={128} />
+            <EmojiImage emoji="gift" size={128} priority />
           </motion.div>
         </motion.div>
       </div>

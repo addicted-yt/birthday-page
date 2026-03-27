@@ -371,9 +371,9 @@ export function Scene3Cards({ cardPhotos }: Scene3CardsProps) {
     containerTouchStart.current = null;
 
     // 上下滑动超过 10px → 是翻页手势，不触发展开
-    if (dy > 10) return;
+    if (dy > 16) return;
     // 左右位移太大也忽略
-    if (dx > 30) return;
+    if (dx > 34) return;
 
     // 判断点击位置是否在卡片叠放中心区域 ± padding 内
     const el = containerRef.current;
@@ -383,10 +383,11 @@ export function Scene3Cards({ cardPhotos }: Scene3CardsProps) {
     const relY = t.clientY - rect.top;
     const cx = rect.width / 2;
     const cy = rect.height / 2;
-    // 卡片堆的近似尺寸 + padding 60px
-    const hitW = Math.min(180, rect.width * 0.46) * 1.25 + 72;
-    const hitH = Math.min(rect.height + 140, Math.max(300, rect.height * 1.35));
-    if (Math.abs(relX - cx) > hitW / 2 || Math.abs(relY - cy) > hitH / 2) return;
+    const hitW = Math.min(220, rect.width * 0.56) + 120;
+    const hitH = Math.max(360, rect.height * 1.75);
+    const normalizedX = (relX - cx) / (hitW / 2);
+    const normalizedY = (relY - cy) / (hitH / 2);
+    if (normalizedX * normalizedX + normalizedY * normalizedY > 1) return;
 
     touchRef.current = true;
     setIsHovered((v) => !v);

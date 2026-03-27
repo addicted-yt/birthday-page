@@ -47,7 +47,7 @@ export function Scene7Ending({ name, onVisible }: Scene7EndingProps) {
             animate={{ y: [0, -6, 0] }}
             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
           >
-            <EmojiImage emoji="birthday" size={80} className="drop-shadow-lg" />
+            <EmojiImage emoji="birthday" size={80} className="drop-shadow-lg" priority />
           </motion.div>
         </motion.div>
 

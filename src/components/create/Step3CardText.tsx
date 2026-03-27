@@ -1489,7 +1489,11 @@ function CustomColorSlot({ hex, selected, onPickerChange, onApply, onReset, defa
   defaultHex: string;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
-  const isTouchRef = useRef(false);
+  const isTouchDevice =
+    typeof window !== "undefined" &&
+    ("ontouchstart" in window ||
+      (typeof window.matchMedia === "function" &&
+        window.matchMedia("(hover: none) and (pointer: coarse)").matches));
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleChange = useCallback((newHex: string) => {
@@ -1503,21 +1507,20 @@ function CustomColorSlot({ hex, selected, onPickerChange, onApply, onReset, defa
   }, [defaultHex, onPickerChange, onReset]);
 
   const openPicker = () => setPickerOpen(true);
+  const applyAndOpenPicker = useCallback(() => {
+    onApply();
+    setPickerOpen(true);
+  }, [onApply]);
 
   return (
     <div ref={containerRef} style={{ position: "relative", width: 22, height: 22, flexShrink: 0 }}>
       <motion.button
         whileHover={{ scale: 1.15 }}
         whileTap={{ scale: 0.9 }}
-        onTouchStart={() => { isTouchRef.current = true; }}
         onClick={() => {
-          if (isTouchRef.current) {
-            isTouchRef.current = false;
-            // 移动端：先应用当前颜色，再打开 picker
-            onApply();
-            setPickerOpen(true);
+          if (isTouchDevice) {
+            applyAndOpenPicker();
           } else {
-            // 桌面端左键：应用颜色
             onApply();
           }
         }}
@@ -1535,7 +1538,14 @@ function CustomColorSlot({ hex, selected, onPickerChange, onApply, onReset, defa
       >
         {/* 铅笔图标：点击打开 picker */}
         <div
-          onClick={(e) => { e.stopPropagation(); openPicker(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (isTouchDevice) {
+              applyAndOpenPicker();
+            } else {
+              openPicker();
+            }
+          }}
           style={{
             position: "absolute", bottom: -3, right: -3,
             width: 13, height: 13,

@@ -15,6 +15,7 @@ interface EmojiImageProps {
   size?: number;
   className?: string;
   alt?: string;
+  priority?: boolean;
 }
 
 export function EmojiImage({
@@ -22,6 +23,7 @@ export function EmojiImage({
   size = 48,
   className = "",
   alt = "",
+  priority = false,
 }: EmojiImageProps) {
   return (
     <Image
@@ -31,6 +33,7 @@ export function EmojiImage({
       height={size}
       className={className}
       draggable={false}
+      priority={priority}
     />
   );
 }

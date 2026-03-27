@@ -6,6 +6,7 @@ import { springGentle } from "@/lib/animationPresets";
 interface Scene4_5CandleProps {
   onBlown: () => void;
   onEnter: () => void;
+  onMicPromptChange?: (active: boolean) => void;
 }
 
 const LINES = [
@@ -219,7 +220,7 @@ function CakeSVG({ phase, showSmoke }: { phase: string; showSmoke: boolean }) {
   );
 }
 
-export function Scene4_5Candle({ onBlown, onEnter }: Scene4_5CandleProps) {
+export function Scene4_5Candle({ onBlown, onEnter, onMicPromptChange }: Scene4_5CandleProps) {
   const sectionRef = useRef<HTMLElement>(null);
   const isTouchDevice =
     typeof window !== "undefined" &&
@@ -241,16 +242,19 @@ export function Scene4_5Candle({ onBlown, onEnter }: Scene4_5CandleProps) {
   });
   const hasEnteredRef = useRef(false);
   const hasBlownRef = useRef(false);
+  const hasExitedRef = useRef(false);
   const micDetectionStartedRef = useRef(false);
   const micStreamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number>(0);
   const onEnterRef = useRef(onEnter);
   const onBlownRef = useRef(onBlown);
+  const onMicPromptChangeRef = useRef(onMicPromptChange);
 
   useEffect(() => {
     onEnterRef.current = onEnter;
     onBlownRef.current = onBlown;
-  }, [onEnter, onBlown]);
+    onMicPromptChangeRef.current = onMicPromptChange;
+  }, [onEnter, onBlown, onMicPromptChange]);
 
   const triggerBlown = useCallback(() => {
     if (hasBlownRef.current) return;
@@ -276,8 +280,10 @@ export function Scene4_5Candle({ onBlown, onEnter }: Scene4_5CandleProps) {
       return;
     }
     micDetectionStartedRef.current = true;
+    onMicPromptChangeRef.current?.(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      onMicPromptChangeRef.current?.(false);
       micStreamRef.current = stream;
       const ctx = new AudioContext();
       const source = ctx.createMediaStreamSource(stream);
@@ -311,6 +317,7 @@ export function Scene4_5Candle({ onBlown, onEnter }: Scene4_5CandleProps) {
 
       animFrameRef.current = requestAnimationFrame(check);
     } catch {
+      onMicPromptChangeRef.current?.(false);
       micDetectionStartedRef.current = false;
       setMicMode("skipped");
       // Keep tap-to-blow as the fallback when mic permission is unavailable.
@@ -320,19 +327,34 @@ export function Scene4_5Candle({ onBlown, onEnter }: Scene4_5CandleProps) {
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return;
-    let touchStartY = 0;
-
-    const triggerEnterFromGesture = () => {
-      if (hasEnteredRef.current || hasBlownRef.current) return;
+    const triggerEnter = () => {
+      if (hasEnteredRef.current || hasBlownRef.current || hasExitedRef.current) return;
       hasEnteredRef.current = true;
       onEnterRef.current();
       window.setTimeout(() => setPhase("subtitles"), 800);
     };
 
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.62) {
+          triggerEnter();
+        }
+      },
+      { threshold: [0.42, 0.62, 0.82] }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el || phase === "done") return;
+    let touchStartY = 0;
+
     const onWheel = (event: WheelEvent) => {
-      if (!hasBlownRef.current && event.deltaY > 0) {
+      if (hasEnteredRef.current && !hasBlownRef.current && event.deltaY > 0) {
         event.preventDefault();
-        triggerEnterFromGesture();
       }
     };
 
@@ -341,9 +363,9 @@ export function Scene4_5Candle({ onBlown, onEnter }: Scene4_5CandleProps) {
     };
 
     const onTouchMove = (event: TouchEvent) => {
-      if (!hasBlownRef.current && touchStartY - event.touches[0].clientY > 0) {
+      if (!hasEnteredRef.current || hasBlownRef.current) return;
+      if (touchStartY - event.touches[0].clientY > 0) {
         event.preventDefault();
-        triggerEnterFromGesture();
       }
     };
 
@@ -355,7 +377,7 @@ export function Scene4_5Candle({ onBlown, onEnter }: Scene4_5CandleProps) {
       el.removeEventListener("touchstart", onTouchStart);
       el.removeEventListener("touchmove", onTouchMove);
     };
-  }, []);
+  }, [phase]);
 
   useEffect(() => {
     if (phase !== "subtitles") return;
@@ -400,6 +422,7 @@ export function Scene4_5Candle({ onBlown, onEnter }: Scene4_5CandleProps) {
 
   useEffect(() => {
     return () => {
+      onMicPromptChangeRef.current?.(false);
       micDetectionStartedRef.current = false;
       cancelAnimationFrame(animFrameRef.current);
       micStreamRef.current?.getTracks().forEach((track) => track.stop());
@@ -426,17 +449,50 @@ export function Scene4_5Candle({ onBlown, onEnter }: Scene4_5CandleProps) {
     if (phase !== "done") return;
     const el = sectionRef.current;
     if (!el) return;
+
+    let touchStartY = 0;
+    const triggerExit = () => {
+      if (hasExitedRef.current) return;
+      hasExitedRef.current = true;
+      onBlownRef.current();
+    };
+
+    const onWheel = (event: WheelEvent) => {
+      if (event.deltaY > 0) {
+        triggerExit();
+      }
+    };
+
+    const onTouchStart = (event: TouchEvent) => {
+      touchStartY = event.touches[0].clientY;
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      if (touchStartY - event.touches[0].clientY > 12) {
+        triggerExit();
+      }
+    };
+
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (!entry.isIntersecting) {
+        if (!entry.isIntersecting || entry.intersectionRatio < 0.45) {
           observer.disconnect();
-          onBlownRef.current();
+          triggerExit();
         }
       },
-      { threshold: 0.1 }
+      { threshold: [0.45, 0.7] }
     );
+
+    el.addEventListener("wheel", onWheel, { passive: true });
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: true });
     observer.observe(el);
-    return () => observer.disconnect();
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      observer.disconnect();
+    };
   }, [phase]);
 
   return (
