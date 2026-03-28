@@ -493,21 +493,23 @@ export function Scene4_5Candle({ onBlown, onEnter, onExiting, onMicEnded, onMicP
       if (!scrollRoot) return;
       const rect = el.getBoundingClientRect();
       const containerRect = scrollRoot.getBoundingClientRect();
-      // 蛋糕幕顶部超过容器底部，或底部低于容器顶部，说明已离屏
-      if (rect.bottom < containerRect.top + 50 || rect.top > containerRect.bottom - 50) {
+      const threshold = containerRect.height * 0.25;
+      // 蛋糕幕顶部超过容器底部25%，或底部低于容器顶部25%，说明已离屏
+      if (rect.bottom < containerRect.top + threshold || rect.top > containerRect.bottom - threshold) {
         triggerExitWithSong();
       }
     };
-    // iOS scroll-snap 瞬间跳转时 touchmove 不触发，touchend 后检测是否已离屏
+    // 移动端 scroll-snap 滑动时 touchmove 不触发，touchend 后延迟等 snap 动画完成再检测
     const onTouchEnd = () => {
       if (!scrollRoot) return;
-      window.requestAnimationFrame(() => {
+      window.setTimeout(() => {
         const rect = el.getBoundingClientRect();
         const containerRect = scrollRoot.getBoundingClientRect();
-        if (rect.bottom < containerRect.top + 50 || rect.top > containerRect.bottom - 50) {
+        const threshold = containerRect.height * 0.25;
+        if (rect.bottom < containerRect.top + threshold || rect.top > containerRect.bottom - threshold) {
           triggerExitWithSong();
         }
-      });
+      }, 400);
     };
 
     let initialFired = false;

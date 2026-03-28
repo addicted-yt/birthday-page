@@ -53,9 +53,9 @@ export function Scene0Curtain({ onStart }: Scene0CurtainProps) {
       >
         <p
           style={{
-            fontSize: "clamp(0.9rem, 2.5vw, 1.1rem)",
+            fontSize: "clamp(1rem, 2.8vw, 1.25rem)",
             letterSpacing: "0.18em",
-            color: "rgba(255,255,255,0.62)",
+            color: "rgba(255,255,255,0.75)",
             fontWeight: 300,
             lineHeight: 1.9,
             margin: 0,
@@ -65,9 +65,9 @@ export function Scene0Curtain({ onStart }: Scene0CurtainProps) {
         </p>
         <p
           style={{
-            fontSize: "clamp(0.82rem, 2vw, 0.95rem)",
+            fontSize: "clamp(0.9rem, 2.2vw, 1.05rem)",
             letterSpacing: "0.14em",
-            color: "rgba(255,255,255,0.35)",
+            color: "rgba(255,255,255,0.50)",
             fontWeight: 300,
             margin: 0,
           }}

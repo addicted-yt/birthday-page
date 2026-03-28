@@ -64,10 +64,10 @@ export function HeroSection() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ ...springGentle, delay: 1.4 }}
       >
-        <SpringButton variant="primary" onClick={() => navigate("/create")}>
+        <SpringButton variant="primary" className="w-44" onClick={() => navigate("/create")}>
           立即制作
         </SpringButton>
-        <SpringButton variant="secondary" onClick={() => navigate("/demo")}>
+        <SpringButton variant="secondary" className="w-44" onClick={() => navigate("/demo")}>
           先看看效果
         </SpringButton>
       </motion.div>
