@@ -240,10 +240,7 @@ export function ResultPageShell({
       } else {
         activeTrackRef.current = "gift";
       }
-      await ensureBirthdaySongStopped();
-      pianoMusic.fadeIn(0.65);
-      setMusicOn(true);
-      // 移动端：instant 跳转需等 scroll-snap 稳定，延迟 100ms；桌面端用 rAF 即时滚动
+      // 立即滚动，不等 birthday song fadeOut（fadeOut 最多1.2s，不应阻塞视觉跳转）
       const isTouchDevice =
         typeof window !== "undefined" &&
         ("ontouchstart" in window ||
@@ -254,6 +251,9 @@ export function ResultPageShell({
       } else {
         requestAnimationFrame(() => { scrollToSection(scene5Ref.current); });
       }
+      await ensureBirthdaySongStopped();
+      pianoMusic.fadeIn(0.65);
+      setMusicOn(true);
     };
 
     void openGiftFlow();

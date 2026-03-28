@@ -39,12 +39,21 @@ export function HeroSection() {
           的一份特别祝福
         </h1>
         <motion.p
-          className="text-sm md:text-base tracking-[0.2em] text-white/35 font-light"
+          className="text-sm md:text-base tracking-[0.2em] text-white/45 font-light"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ ...springGentle, delay: 0.7 }}
         >
           可定制 · 可分享 · 沉浸式体验
+        </motion.p>
+        <motion.p
+          className="text-xs md:text-sm tracking-[0.2em]"
+          style={{ color: "rgba(255,255,255,0.30)" }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ ...springGentle, delay: 1.0 }}
+        >
+          有些话说不出口，就让代码替你表达
         </motion.p>
       </motion.div>
 
@@ -53,7 +62,7 @@ export function HeroSection() {
         className="flex flex-col sm:flex-row gap-4 items-center"
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ ...springGentle, delay: 1.0 }}
+        transition={{ ...springGentle, delay: 1.4 }}
       >
         <SpringButton variant="primary" onClick={() => navigate("/create")}>
           立即制作

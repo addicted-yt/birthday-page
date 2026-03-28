@@ -21,6 +21,8 @@ export default function RootLayout({
         <link rel="preload" href="/emoji/balloon.png" as="image" />
         <link rel="preload" href="/emoji/confetti_ball.png" as="image" />
         <link rel="preload" href="/emoji/tada.png" as="image" />
+        {/* 移动端添加到主屏幕时的图标 */}
+        <link rel="apple-touch-icon" href="/icon.svg" />
       </head>
       <body className="min-h-full bg-[#080d1a] text-[#e8e8f0]">
         {children}

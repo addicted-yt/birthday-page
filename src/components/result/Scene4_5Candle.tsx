@@ -465,12 +465,13 @@ export function Scene4_5Candle({ onBlown, onEnter, onExiting, onMicEnded, onMicP
       hasExitedRef.current = true;
       onBlownRef.current();
     };
+    const triggerExitWithSong = () => {
+      onExitingRef.current?.();
+      triggerExit();
+    };
 
     const onWheel = (event: WheelEvent) => {
-      if (event.deltaY > 0) {
-        onExitingRef.current?.();  // 立即通知外部开始淡出歌曲，不等 snap settle
-        triggerExit();
-      }
+      if (event.deltaY > 0) triggerExitWithSong();
     };
 
     const onTouchStart = (event: TouchEvent) => {
@@ -478,27 +479,32 @@ export function Scene4_5Candle({ onBlown, onEnter, onExiting, onMicEnded, onMicP
     };
 
     const onTouchMove = (event: TouchEvent) => {
-      if (touchStartY - event.touches[0].clientY > 12) {
-        onExitingRef.current?.();  // 立即通知外部开始淡出歌曲
-        triggerExit();
+      if (touchStartY - event.touches[0].clientY > 12) triggerExitWithSong();
+    };
+
+    // scroll 容器滚动时检测蛋糕幕是否离屏（兜底，覆盖 scroll-snap instant 跳转场景）
+    const scrollRoot = el.closest(".scroll-snap-y") as HTMLElement | null;
+    const onScrollContainer = () => {
+      if (!scrollRoot) return;
+      const rect = el.getBoundingClientRect();
+      const containerRect = scrollRoot.getBoundingClientRect();
+      // 蛋糕幕顶部超过容器底部，或底部低于容器顶部，说明已离屏
+      if (rect.bottom < containerRect.top + 50 || rect.top > containerRect.bottom - 50) {
+        triggerExitWithSong();
       }
     };
 
     let initialFired = false;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        // 第一次回调是初始状态，跳过（幕刚进入 done，必然几乎全屏可见）
         if (!initialFired) { initialFired = true; return; }
-        // intersectionRatio < 0.85 即开始离屏就触发，不等完全消失
-        // 移动端 scroll-snap 快速 settle，touchmove 可能已结束，靠 Observer 兜底
         if (entry.intersectionRatio < 0.85) {
           observer.disconnect();
-          onExitingRef.current?.();
-          triggerExit();
+          triggerExitWithSong();
         }
       },
       {
-        root: el.closest(".scroll-snap-y"),
+        root: scrollRoot,
         threshold: [0.85, 0.95, 1.0],
       }
     );
@@ -506,11 +512,13 @@ export function Scene4_5Candle({ onBlown, onEnter, onExiting, onMicEnded, onMicP
     el.addEventListener("wheel", onWheel, { passive: true });
     el.addEventListener("touchstart", onTouchStart, { passive: true });
     el.addEventListener("touchmove", onTouchMove, { passive: true });
+    if (scrollRoot) scrollRoot.addEventListener("scroll", onScrollContainer, { passive: true });
     observer.observe(el);
     return () => {
       el.removeEventListener("wheel", onWheel);
       el.removeEventListener("touchstart", onTouchStart);
       el.removeEventListener("touchmove", onTouchMove);
+      if (scrollRoot) scrollRoot.removeEventListener("scroll", onScrollContainer);
       observer.disconnect();
     };
   }, [phase]);
