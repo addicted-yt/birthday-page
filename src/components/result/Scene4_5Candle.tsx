@@ -484,17 +484,22 @@ export function Scene4_5Candle({ onBlown, onEnter, onExiting, onMicEnded, onMicP
       }
     };
 
+    let initialFired = false;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (!entry.isIntersecting || entry.intersectionRatio < 0.45) {
+        // 第一次回调是初始状态，跳过（幕刚进入 done，必然几乎全屏可见）
+        if (!initialFired) { initialFired = true; return; }
+        // intersectionRatio < 0.85 即开始离屏就触发，不等完全消失
+        // 移动端 scroll-snap 快速 settle，touchmove 可能已结束，靠 Observer 兜底
+        if (entry.intersectionRatio < 0.85) {
           observer.disconnect();
-          onExitingRef.current?.();  // 与 touchmove/wheel 路径保持一致，立即触发歌曲淡出
+          onExitingRef.current?.();
           triggerExit();
         }
       },
       {
         root: el.closest(".scroll-snap-y"),
-        threshold: [0.45, 0.7],
+        threshold: [0.85, 0.95, 1.0],
       }
     );
 
