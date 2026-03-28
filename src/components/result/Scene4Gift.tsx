@@ -129,22 +129,6 @@ export function Scene4Gift({ onOpen, onEnter, sectionRef: externalSectionRef }: 
       style={{ zIndex: 10, touchAction: opened ? "auto" : "none" }}
     >
       <div className="flex flex-col items-center gap-8 relative">
-        {/* 粒子 */}
-        <AnimatePresence>
-          {particles.map((p) => (
-            <motion.div
-              key={p.id}
-              className="absolute pointer-events-none"
-              style={{ zIndex: 5 + (p.id % 10) }}
-              initial={{ x: 0, y: 0, opacity: 1, scale: 0, rotate: 0 }}
-              animate={{ x: p.x, y: p.y, opacity: 0, scale: p.scale, rotate: p.rotation }}
-              transition={{ duration: 1.2, ease: "easeOut" }}
-            >
-            <EmojiImage emoji={p.emoji} size={36} />
-            </motion.div>
-          ))}
-        </AnimatePresence>
-
         {/* 提示 */}
         <motion.p
           className="font-light select-none"
@@ -176,6 +160,22 @@ export function Scene4Gift({ onOpen, onEnter, sectionRef: externalSectionRef }: 
           onTouchEnd={handleGiftTouchEnd}
           onTouchCancel={handleGiftTouchEnd}
         >
+          {/* 粒子从礼物中心爆出，以礼物盒为定位父元素避免被 scroll 容器裁剪 */}
+          <AnimatePresence>
+            {particles.map((p) => (
+              <motion.div
+                key={p.id}
+                className="absolute pointer-events-none"
+                style={{ zIndex: 5 + (p.id % 10), top: "50%", left: "50%" }}
+                initial={{ x: 0, y: 0, opacity: 1, scale: 0, rotate: 0 }}
+                animate={{ x: p.x, y: p.y, opacity: 0, scale: p.scale, rotate: p.rotation }}
+                transition={{ duration: 1.2, ease: "easeOut" }}
+              >
+              <EmojiImage emoji={p.emoji} size={36} />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
           {/* 脉冲光环 */}
           {!opened && (
             <>

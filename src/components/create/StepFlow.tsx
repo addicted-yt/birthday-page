@@ -149,7 +149,7 @@ export function StepFlow({ restoreSid }: { restoreSid?: string | null }) {
 
   return (
     <div
-      className="relative min-h-dvh flex flex-col items-center justify-center px-6 py-24 overflow-y-auto"
+      className="relative h-dvh flex flex-col items-center px-6 py-24 overflow-y-auto"
       style={{ background: "radial-gradient(ellipse at 50% 30%, #111d40 0%, #080d1a 75%)" }}
     >
       <SubtleBackground />
@@ -222,7 +222,7 @@ export function StepFlow({ restoreSid }: { restoreSid?: string | null }) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -16 }}
           transition={{ ...springGentle }}
-          className="w-full max-w-md z-10"
+          className="w-full max-w-md z-10 my-auto"
         >
           {state.step === 1 && (
             <Step1Name

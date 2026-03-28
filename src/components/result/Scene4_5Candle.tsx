@@ -488,6 +488,7 @@ export function Scene4_5Candle({ onBlown, onEnter, onExiting, onMicEnded, onMicP
       ([entry]) => {
         if (!entry.isIntersecting || entry.intersectionRatio < 0.45) {
           observer.disconnect();
+          onExitingRef.current?.();  // 与 touchmove/wheel 路径保持一致，立即触发歌曲淡出
           triggerExit();
         }
       },

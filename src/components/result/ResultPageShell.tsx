@@ -212,9 +212,17 @@ export function ResultPageShell({
   const handleCandleBlown = useCallback(() => {
     birthdayExitedCakeRef.current = true;
     void ensureBirthdaySongStopped();
-    requestAnimationFrame(() => {
-      scrollToSection(giftRef.current);
-    });
+    // 移动端 scroll-snap 会自然滚到礼物幕，不要强制跳转（会与 scroll-snap 冲突导致弹回）
+    const isTouchDevice =
+      typeof window !== "undefined" &&
+      ("ontouchstart" in window ||
+        (typeof window.matchMedia === "function" &&
+          window.matchMedia("(hover: none) and (pointer: coarse)").matches));
+    if (!isTouchDevice) {
+      requestAnimationFrame(() => {
+        scrollToSection(giftRef.current);
+      });
+    }
   }, [ensureBirthdaySongStopped, scrollToSection]);
 
   const handleGiftEnter = useCallback(() => {
@@ -235,10 +243,17 @@ export function ResultPageShell({
       await ensureBirthdaySongStopped();
       pianoMusic.fadeIn(0.65);
       setMusicOn(true);
-      // 用 rAF 等本轮渲染完成后再滚动，移动端用 instant 跳转（见 scrollToSection）
-      requestAnimationFrame(() => {
-        scrollToSection(scene5Ref.current);
-      });
+      // 移动端：instant 跳转需等 scroll-snap 稳定，延迟 100ms；桌面端用 rAF 即时滚动
+      const isTouchDevice =
+        typeof window !== "undefined" &&
+        ("ontouchstart" in window ||
+          (typeof window.matchMedia === "function" &&
+            window.matchMedia("(hover: none) and (pointer: coarse)").matches));
+      if (isTouchDevice) {
+        window.setTimeout(() => { scrollToSection(scene5Ref.current); }, 100);
+      } else {
+        requestAnimationFrame(() => { scrollToSection(scene5Ref.current); });
+      }
     };
 
     void openGiftFlow();
