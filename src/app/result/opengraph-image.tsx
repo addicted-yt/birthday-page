@@ -3,8 +3,7 @@ import { ImageResponse } from "next/og";
 export const alt = "Happy Birthday";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-// 不设置 force-dynamic，让 Cloudflare Workers 可以缓存响应
-// 微信爬虫需要快速响应，动态渲染超时会导致 OG 图不显示
+export const dynamic = "force-dynamic";
 
 export default async function Image({
   searchParams,
