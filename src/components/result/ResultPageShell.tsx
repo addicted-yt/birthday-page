@@ -10,6 +10,7 @@ import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { useFirstInteraction } from "@/hooks/useFirstInteraction";
 import { springGentle } from "@/lib/animationPresets";
 import { getDefaultCardPlaceholders } from "@/lib/defaultCardPlaceholders";
+import { Scene0Curtain } from "./Scene0Curtain";
 import { Scene1Intro } from "./Scene1Intro";
 import { Scene2Title } from "./Scene2Title";
 import { Scene3Cards } from "./Scene3Cards";
@@ -77,6 +78,10 @@ export function ResultPageShell({
   const [giftOpened, setGiftOpened] = useState(false);
   const [endingVisible, setEndingVisible] = useState(false);
   const [musicOn, setMusicOn] = useState(false);
+  // isCreator（预览页）跳过引导幕，其他情况（收件人/demo）显示
+  const [showCurtain, setShowCurtain] = useState(!isCreator);
+  // 引导幕消散动画完成后才渲染底层内容，确保第一幕动画全新开始
+  const [curtainDone, setCurtainDone] = useState(isCreator);
 
   const birthdaySong = useAudioPlayer("/audio/birthday-song.mp3");
   const pianoMusic = useAudioPlayer("/audio/gift-bgm.mp3");
@@ -221,6 +226,13 @@ export function ResultPageShell({
     setMusicOn(true);
   }, [birthdaySong]);
   handleCandleEnterRef.current = handleCandleEnter;
+
+  const handleCurtainStart = useCallback(() => {
+    // 用户点击启幕按钮：解锁音频（在用户手势回调里，100% 可靠）然后消散引导幕
+    birthdaySong.unlock();
+    pianoMusic.unlock();
+    setShowCurtain(false);
+  }, [birthdaySong, pianoMusic]);
 
   const handleCandleBlown = useCallback(() => {
     birthdayExitedCakeRef.current = true;
@@ -386,7 +398,11 @@ export function ResultPageShell({
       <CosmicBackground />
       <PageTransitionOverlay leaving={navigatingAway} entering />
 
-      {showHomeButton && (
+      <AnimatePresence onExitComplete={() => setCurtainDone(true)}>
+        {showCurtain && <Scene0Curtain onStart={handleCurtainStart} />}
+      </AnimatePresence>
+
+      {curtainDone && showHomeButton && (
         <motion.button
           className="fixed z-50 flex items-center gap-2"
           style={{
@@ -423,7 +439,7 @@ export function ResultPageShell({
         </motion.button>
       )}
 
-      <Scene1Intro />
+      <Scene1Intro started={curtainDone} />
       <Scene2Title name={data.name} />
       <Scene3Cards cardPhotos={cardPhotos} />
 
