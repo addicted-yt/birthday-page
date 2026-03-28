@@ -149,7 +149,7 @@ export function StepFlow({ restoreSid }: { restoreSid?: string | null }) {
 
   return (
     <div
-      className="relative min-h-dvh flex flex-col items-center justify-start px-6 pt-24 pb-24"
+      className="relative min-h-dvh flex flex-col items-center justify-center px-6 py-24 overflow-y-auto"
       style={{ background: "radial-gradient(ellipse at 50% 30%, #111d40 0%, #080d1a 75%)" }}
     >
       <SubtleBackground />

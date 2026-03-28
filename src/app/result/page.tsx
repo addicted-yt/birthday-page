@@ -26,11 +26,16 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const title = `送给 ${name} 的生日祝福`;
   const description = "一份专属的沉浸式生日祝福";
   const ogImageUrl = new URL(`/result/opengraph-image?name=${encodeURIComponent(name)}`, siteUrl).toString();
-  const resultQuery = new URLSearchParams({
-    ...(params.d ? { d: params.d } : {}),
-    ...(params.creator ? { creator: params.creator } : {}),
-  }).toString();
-  const resultUrl = new URL(resultQuery ? `/result?${resultQuery}` : "/result", siteUrl).toString();
+  // URLSearchParams 会对值再次 encodeURIComponent，导致 + 号被编码为 %2B
+  // 直接手动拼接原始参数字符串，保留 d/name 参数的原始编码
+  const resultParts: string[] = [];
+  if (params.d) resultParts.push(`d=${params.d}`);
+  if (params.name) resultParts.push(`name=${params.name}`);
+  if (params.creator) resultParts.push(`creator=${params.creator}`);
+  const resultUrl = new URL(
+    resultParts.length ? `/result?${resultParts.join("&")}` : "/result",
+    siteUrl
+  ).toString();
 
   return {
     title,

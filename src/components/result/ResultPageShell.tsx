@@ -92,18 +92,45 @@ export function ResultPageShell({
   const scene5Ref = useRef<HTMLElement | null>(null);
   const scene5PhotosRef = useRef<HTMLElement | null>(null);
 
-  const shareUrl =
-    typeof window !== "undefined" && encodedData
-      ? `${window.location.origin}/result?d=${encodedData}`
-      : "";
+  // shareUrl 必须从原始 location.search 截取 d/name 参数，不能用 searchParams.get()
+  // 因为 searchParams.get 会把 + 解码成空格，重新拼 URL 就会出现空格导致链接断裂
+  const shareUrl = (() => {
+    if (typeof window === "undefined" || !encodedData) return "";
+    const raw = window.location.search;
+    const dMatch = raw.match(/[?&]d=([^&]*)/);
+    const rawD = dMatch ? dMatch[1] : encodeURIComponent(encodedData);
+    const nameMatch = raw.match(/[?&]name=([^&]*)/);
+    const rawName = nameMatch ? nameMatch[1] : (encodedName ? encodeURIComponent(encodedName) : null);
+    return `${window.location.origin}/result?d=${rawD}${rawName ? `&name=${rawName}` : ""}`;
+  })();
 
   const scrollToSection = useCallback((target: HTMLElement | null, delay = 0) => {
     if (!target) return;
     const run = () => {
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
-      window.setTimeout(() => {
+      const snapContainer = target.closest(".scroll-snap-y") as HTMLElement | null;
+      if (snapContainer) {
+        const targetTop = target.offsetTop;
+        const isTouchDevice =
+          "ontouchstart" in window ||
+          (typeof window.matchMedia === "function" &&
+            window.matchMedia("(hover: none) and (pointer: coarse)").matches);
+        if (isTouchDevice) {
+          // iOS Safari 上 smooth scrollTo 在 scroll-snap 容器里经常被忽略
+          // 用 instant 跳转，scroll-snap 会自动 settle 到 snap 点
+          snapContainer.scrollTo({ top: targetTop, behavior: "instant" });
+        } else {
+          // 桌面端保持平滑滚动
+          snapContainer.scrollTo({ top: targetTop, behavior: "smooth" });
+          window.setTimeout(() => {
+            snapContainer.scrollTo({ top: target.offsetTop, behavior: "smooth" });
+          }, 180);
+        }
+      } else {
         target.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 180);
+        window.setTimeout(() => {
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 180);
+      }
     };
 
     if (delay > 0) {
@@ -208,6 +235,7 @@ export function ResultPageShell({
       await ensureBirthdaySongStopped();
       pianoMusic.fadeIn(0.65);
       setMusicOn(true);
+      // 用 rAF 等本轮渲染完成后再滚动，移动端用 instant 跳转（见 scrollToSection）
       requestAnimationFrame(() => {
         scrollToSection(scene5Ref.current);
       });
@@ -368,6 +396,7 @@ export function ResultPageShell({
 
       <Scene4_5Candle
         onEnter={handleCandleEnter}
+        onExiting={() => { void ensureBirthdaySongStopped(); }}
         onBlown={handleCandleBlown}
         onMicEnded={handleMicEnded}
         onMicPromptChange={handleMicPromptChange}

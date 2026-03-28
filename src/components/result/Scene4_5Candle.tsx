@@ -6,6 +6,7 @@ import { springGentle } from "@/lib/animationPresets";
 interface Scene4_5CandleProps {
   onBlown: () => void;
   onEnter: () => void;
+  onExiting?: () => void;  // 吹完后用户开始下滑时立即触发（早于 onBlown）
   onMicEnded?: () => void;
   onMicPromptChange?: (active: boolean) => void;
 }
@@ -221,7 +222,7 @@ function CakeSVG({ phase, showSmoke }: { phase: string; showSmoke: boolean }) {
   );
 }
 
-export function Scene4_5Candle({ onBlown, onEnter, onMicEnded, onMicPromptChange }: Scene4_5CandleProps) {
+export function Scene4_5Candle({ onBlown, onEnter, onExiting, onMicEnded, onMicPromptChange }: Scene4_5CandleProps) {
   const sectionRef = useRef<HTMLElement>(null);
   const isTouchDevice =
     typeof window !== "undefined" &&
@@ -249,15 +250,17 @@ export function Scene4_5Candle({ onBlown, onEnter, onMicEnded, onMicPromptChange
   const animFrameRef = useRef<number>(0);
   const onEnterRef = useRef(onEnter);
   const onBlownRef = useRef(onBlown);
+  const onExitingRef = useRef(onExiting);
   const onMicEndedRef = useRef(onMicEnded);
   const onMicPromptChangeRef = useRef(onMicPromptChange);
 
   useEffect(() => {
     onEnterRef.current = onEnter;
     onBlownRef.current = onBlown;
+    onExitingRef.current = onExiting;
     onMicEndedRef.current = onMicEnded;
     onMicPromptChangeRef.current = onMicPromptChange;
-  }, [onEnter, onBlown, onMicEnded, onMicPromptChange]);
+  }, [onEnter, onBlown, onExiting, onMicEnded, onMicPromptChange]);
 
   const triggerBlown = useCallback(() => {
     if (hasBlownRef.current) return;
@@ -465,6 +468,7 @@ export function Scene4_5Candle({ onBlown, onEnter, onMicEnded, onMicPromptChange
 
     const onWheel = (event: WheelEvent) => {
       if (event.deltaY > 0) {
+        onExitingRef.current?.();  // 立即通知外部开始淡出歌曲，不等 snap settle
         triggerExit();
       }
     };
@@ -475,6 +479,7 @@ export function Scene4_5Candle({ onBlown, onEnter, onMicEnded, onMicPromptChange
 
     const onTouchMove = (event: TouchEvent) => {
       if (touchStartY - event.touches[0].clientY > 12) {
+        onExitingRef.current?.();  // 立即通知外部开始淡出歌曲
         triggerExit();
       }
     };
