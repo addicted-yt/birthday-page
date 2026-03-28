@@ -13,6 +13,31 @@ export function useAudioPlayer(src: string) {
       audioRef.current = new Audio(src);
       audioRef.current.loop = true;
       audioRef.current.volume = 0;
+      // 监听意外暂停（如系统调整音量触发的浏览器 pause 事件）
+      // 如果 playingRef 仍为 true，说明不是我们主动暂停的，尝试恢复
+      // 移动端音量键会触发 pause，直接 play() 可能被 autoplay policy 拒绝
+      // 用 volume=0 + play() + 渐入的方式绕过限制
+      audioRef.current.addEventListener("pause", () => {
+        if (!playingRef.current) return;
+        const audio = audioRef.current;
+        if (!audio) return;
+        window.setTimeout(() => {
+          if (!playingRef.current || !audio.paused) return;
+          const target = targetVolRef.current;
+          audio.volume = 0;
+          audio.play().then(() => {
+            // 渐入恢复，避免音量突变
+            const timer = setInterval(() => {
+              if (audio.volume < target - 0.001) {
+                audio.volume = Math.min(target, parseFloat((audio.volume + 0.04).toFixed(3)));
+              } else {
+                try { audio.volume = target; } catch { /* ignore */ }
+                clearInterval(timer);
+              }
+            }, 80);
+          }).catch(() => {});
+        }, 300);
+      });
     }
     return audioRef.current;
   }, [src]);

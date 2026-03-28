@@ -94,6 +94,7 @@ export function ResultPageShell({
 
   // shareUrl 必须从原始 location.search 截取 d/name 参数，不能用 searchParams.get()
   // 因为 searchParams.get 会把 + 解码成空格，重新拼 URL 就会出现空格导致链接断裂
+  // origin 固定用 thesedays.cn，确保收件方走 Cloudflare Workers（有 R2 binding）
   const shareUrl = (() => {
     if (typeof window === "undefined" || !encodedData) return "";
     const raw = window.location.search;
@@ -101,7 +102,7 @@ export function ResultPageShell({
     const rawD = dMatch ? dMatch[1] : encodeURIComponent(encodedData);
     const nameMatch = raw.match(/[?&]name=([^&]*)/);
     const rawName = nameMatch ? nameMatch[1] : (encodedName ? encodeURIComponent(encodedName) : null);
-    return `${window.location.origin}/result?d=${rawD}${rawName ? `&name=${rawName}` : ""}`;
+    return `https://thesedays.cn/result?d=${rawD}${rawName ? `&name=${rawName}` : ""}`;
   })();
 
   const scrollToSection = useCallback((target: HTMLElement | null, delay = 0) => {
@@ -202,10 +203,14 @@ export function ResultPageShell({
 
   const handleCandleEnter = useCallback(() => {
     if (birthdaySongStarted.current) return;
-    birthdayExitedCakeRef.current = false;
     birthdaySongStarted.current = true;
     activeTrackRef.current = "birthday";
-    birthdaySong.fadeIn(0.72);
+    birthdaySong.fadeIn(0.72, () => {
+      // autoplay policy 阻止：重置状态，等用户下一次手势后由 handleMicEnded / handleCandleEnter 重试
+      birthdaySongStarted.current = false;
+      activeTrackRef.current = null;
+      setMusicOn(false);
+    });
     setMusicOn(true);
   }, [birthdaySong]);
 
@@ -232,7 +237,7 @@ export function ResultPageShell({
 
   const handleGiftTap = useCallback(() => {
     // 点击礼物瞬间立即启动：停止 birthday song、预启动 piano（静音），不等 1400ms 动画
-    setGiftOpened(true);
+    // 注意：setGiftOpened 不在这里调用，避免信件字幕在滚动前提前开始
     if (!pianoStarted.current) {
       pianoStarted.current = true;
       activeTrackRef.current = "gift";
@@ -245,10 +250,8 @@ export function ResultPageShell({
 
   const handleGiftOpen = useCallback(() => {
     const openGiftFlow = async () => {
-      await ensureBirthdaySongStopped();
-      pianoMusic.fadeIn(0.65);
-      setMusicOn(true);
-      // 立即滚动（桌面 rAF，移动端延迟 100ms 等 scroll-snap 稳定）
+      setGiftOpened(true);  // 在这里设置，确保信件动画在滚动后才开始
+      // 立即滚动，不等 birthday song fadeOut
       const isTouchDevice =
         typeof window !== "undefined" &&
         ("ontouchstart" in window ||
@@ -259,6 +262,9 @@ export function ResultPageShell({
       } else {
         requestAnimationFrame(() => { scrollToSection(scene5Ref.current); });
       }
+      await ensureBirthdaySongStopped();
+      pianoMusic.fadeIn(0.65);
+      setMusicOn(true);
     };
     void openGiftFlow();
   }, [ensureBirthdaySongStopped, pianoMusic, scrollToSection]);

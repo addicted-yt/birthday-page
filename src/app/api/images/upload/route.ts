@@ -10,16 +10,21 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 // R2Bucket 最小类型声明（仅此文件使用，不引入全局 Workers 类型避免与 DOM 冲突）
 interface R2Bucket {
   put(key: string, value: Uint8Array, options?: { httpMetadata?: { contentType?: string } }): Promise<void>;
 }
 
-// 获取 R2 binding（Workers 环境）或 undefined（Vercel/本地环境）
+// 获取 R2 binding（Workers 环境）或 undefined（本地环境）
 function getR2Bucket(): R2Bucket | undefined {
-  // @ts-expect-error Workers binding，非标准 Node.js 全局
-  return typeof globalThis.R2_BUCKET !== "undefined" ? globalThis.R2_BUCKET as R2Bucket : undefined;
+  try {
+    const ctx = getCloudflareContext();
+    return (ctx.env as Record<string, unknown>).R2_BUCKET as R2Bucket | undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 // 允许的来源域名列表（新增域名在此追加即可）

@@ -9,6 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 // R2Bucket 最小类型声明（仅此文件使用）
 interface R2Bucket {
@@ -20,8 +21,12 @@ interface R2Object {
 }
 
 function getR2Bucket(): R2Bucket | undefined {
-  // @ts-expect-error Workers binding
-  return typeof globalThis.R2_BUCKET !== "undefined" ? globalThis.R2_BUCKET as R2Bucket : undefined;
+  try {
+    const ctx = getCloudflareContext();
+    return (ctx.env as Record<string, unknown>).R2_BUCKET as R2Bucket | undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export async function GET(
