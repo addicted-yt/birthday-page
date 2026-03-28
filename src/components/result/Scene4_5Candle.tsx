@@ -498,6 +498,17 @@ export function Scene4_5Candle({ onBlown, onEnter, onExiting, onMicEnded, onMicP
         triggerExitWithSong();
       }
     };
+    // iOS scroll-snap 瞬间跳转时 touchmove 不触发，touchend 后检测是否已离屏
+    const onTouchEnd = () => {
+      if (!scrollRoot) return;
+      window.requestAnimationFrame(() => {
+        const rect = el.getBoundingClientRect();
+        const containerRect = scrollRoot.getBoundingClientRect();
+        if (rect.bottom < containerRect.top + 50 || rect.top > containerRect.bottom - 50) {
+          triggerExitWithSong();
+        }
+      });
+    };
 
     let initialFired = false;
     const observer = new IntersectionObserver(
@@ -518,12 +529,14 @@ export function Scene4_5Candle({ onBlown, onEnter, onExiting, onMicEnded, onMicP
     el.addEventListener("touchstart", onTouchStart, { passive: true });
     el.addEventListener("touchmove", onTouchMove, { passive: true });
     if (isTouchDevice && scrollRoot) scrollRoot.addEventListener("scroll", onScrollContainer, { passive: true });
+    if (isTouchDevice) el.addEventListener("touchend", onTouchEnd, { passive: true });
     observer.observe(el);
     return () => {
       el.removeEventListener("wheel", onWheel);
       el.removeEventListener("touchstart", onTouchStart);
       el.removeEventListener("touchmove", onTouchMove);
       if (isTouchDevice && scrollRoot) scrollRoot.removeEventListener("scroll", onScrollContainer);
+      if (isTouchDevice) el.removeEventListener("touchend", onTouchEnd);
       observer.disconnect();
     };
   }, [phase]);

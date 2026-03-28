@@ -118,6 +118,9 @@ export function Scene4Gift({ onOpen, onTap, onEnter, sectionRef: externalSection
   };
 
   const handleGiftTouchEnd = () => {
+    if (giftTapRef.current) {
+      handleOpen();
+    }
     giftTouchStart.current = null;
   };
 
@@ -156,7 +159,7 @@ export function Scene4Gift({ onOpen, onTap, onEnter, sectionRef: externalSection
           whileHover={opened ? {} : { scale: 1.07 }}
           whileTap={opened ? {} : { scale: 0.92 }}
           onClick={() => {
-            if ("ontouchstart" in window && !giftTapRef.current) return;
+            if ("ontouchstart" in window) return; // 触摸设备由 touchend 处理
             handleOpen();
           }}
           onTouchStart={handleGiftTouchStart}

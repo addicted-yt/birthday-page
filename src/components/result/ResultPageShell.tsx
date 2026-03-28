@@ -87,6 +87,7 @@ export function ResultPageShell({
   const activeTrackRef = useRef<"birthday" | "gift" | null>(null);
   const micPromptActiveRef = useRef(false);
   const pianoStarted = useRef(false);
+  const handleCandleEnterRef = useRef<() => void>(() => {});
 
   const giftRef = useRef<HTMLElement | null>(null);
   const scene5Ref = useRef<HTMLElement | null>(null);
@@ -206,13 +207,20 @@ export function ResultPageShell({
     birthdaySongStarted.current = true;
     activeTrackRef.current = "birthday";
     birthdaySong.fadeIn(0.72, () => {
-      // autoplay policy 阻止：重置状态，等用户下一次手势后由 handleMicEnded / handleCandleEnter 重试
+      // autoplay policy 阻止：重置状态后自动重试一次（延迟等待 unlock 完成）
       birthdaySongStarted.current = false;
       activeTrackRef.current = null;
       setMusicOn(false);
+      // 延迟 600ms 重试：解决 unlock() 异步完成前 fadeIn 被拒的竞态问题
+      // 若用户已经离开蛋糕幕则不重试
+      window.setTimeout(() => {
+        if (birthdaySongStarted.current || birthdayExitedCakeRef.current) return;
+        handleCandleEnterRef.current();
+      }, 600);
     });
     setMusicOn(true);
   }, [birthdaySong]);
+  handleCandleEnterRef.current = handleCandleEnter;
 
   const handleCandleBlown = useCallback(() => {
     birthdayExitedCakeRef.current = true;
