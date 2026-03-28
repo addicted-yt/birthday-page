@@ -482,8 +482,13 @@ export function Scene4_5Candle({ onBlown, onEnter, onExiting, onMicEnded, onMicP
       if (touchStartY - event.touches[0].clientY > 12) triggerExitWithSong();
     };
 
-    // scroll 容器滚动时检测蛋糕幕是否离屏（兜底，覆盖 scroll-snap instant 跳转场景）
+    // scroll 容器滚动时检测蛋糕幕是否离屏（仅移动端：桌面靠 wheel 事件已足够可靠）
     const scrollRoot = el.closest(".scroll-snap-y") as HTMLElement | null;
+    const isTouchDevice =
+      typeof window !== "undefined" &&
+      ("ontouchstart" in window ||
+        (typeof window.matchMedia === "function" &&
+          window.matchMedia("(hover: none) and (pointer: coarse)").matches));
     const onScrollContainer = () => {
       if (!scrollRoot) return;
       const rect = el.getBoundingClientRect();
@@ -512,13 +517,13 @@ export function Scene4_5Candle({ onBlown, onEnter, onExiting, onMicEnded, onMicP
     el.addEventListener("wheel", onWheel, { passive: true });
     el.addEventListener("touchstart", onTouchStart, { passive: true });
     el.addEventListener("touchmove", onTouchMove, { passive: true });
-    if (scrollRoot) scrollRoot.addEventListener("scroll", onScrollContainer, { passive: true });
+    if (isTouchDevice && scrollRoot) scrollRoot.addEventListener("scroll", onScrollContainer, { passive: true });
     observer.observe(el);
     return () => {
       el.removeEventListener("wheel", onWheel);
       el.removeEventListener("touchstart", onTouchStart);
       el.removeEventListener("touchmove", onTouchMove);
-      if (scrollRoot) scrollRoot.removeEventListener("scroll", onScrollContainer);
+      if (isTouchDevice && scrollRoot) scrollRoot.removeEventListener("scroll", onScrollContainer);
       observer.disconnect();
     };
   }, [phase]);

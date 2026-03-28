@@ -15,11 +15,12 @@ interface GiftParticle {
 
 interface Scene4GiftProps {
   onOpen: () => void;
+  onTap?: () => void;  // 点击瞬间触发（早于 onOpen 的 1400ms 延迟）
   onEnter?: () => void;
   sectionRef?: MutableRefObject<HTMLElement | null>;
 }
 
-export function Scene4Gift({ onOpen, onEnter, sectionRef: externalSectionRef }: Scene4GiftProps) {
+export function Scene4Gift({ onOpen, onTap, onEnter, sectionRef: externalSectionRef }: Scene4GiftProps) {
   const [opened, setOpened] = useState(false);
   const [particles, setParticles] = useState<GiftParticle[]>([]);
   const hasOpened = useRef(false);
@@ -28,10 +29,12 @@ export function Scene4Gift({ onOpen, onEnter, sectionRef: externalSectionRef }: 
   const giftTouchStart = useRef<{ x: number; y: number } | null>(null);
   const giftTapRef = useRef(true);
   const onEnterRef = useRef(onEnter);
+  const onTapRef = useRef(onTap);
 
   useEffect(() => {
     onEnterRef.current = onEnter;
-  }, [onEnter]);
+    onTapRef.current = onTap;
+  }, [onEnter, onTap]);
 
   // 进入视口时通知外部（用于停止 birthdaySong）
   useEffect(() => {
@@ -81,6 +84,7 @@ export function Scene4Gift({ onOpen, onEnter, sectionRef: externalSectionRef }: 
     if (hasOpened.current) return;
     hasOpened.current = true;
     setOpened(true);
+    onTapRef.current?.();  // 立即通知外部（启动 piano、停止 birthday song），不等粒子动画
 
     const emojis: GiftParticle["emoji"][] = ["balloon", "confetti", "tada"];
     const newParticles: GiftParticle[] = Array.from({ length: 32 }, (_, i) => ({

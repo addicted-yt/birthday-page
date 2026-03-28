@@ -230,17 +230,25 @@ export function ResultPageShell({
     void ensureBirthdaySongStopped();
   }, [ensureBirthdaySongStopped]);
 
+  const handleGiftTap = useCallback(() => {
+    // 点击礼物瞬间立即启动：停止 birthday song、预启动 piano（静音），不等 1400ms 动画
+    setGiftOpened(true);
+    if (!pianoStarted.current) {
+      pianoStarted.current = true;
+      activeTrackRef.current = "gift";
+      pianoMusic.playMuted();
+    } else {
+      activeTrackRef.current = "gift";
+    }
+    void ensureBirthdaySongStopped();
+  }, [ensureBirthdaySongStopped, pianoMusic]);
+
   const handleGiftOpen = useCallback(() => {
     const openGiftFlow = async () => {
-      setGiftOpened(true);
-      if (!pianoStarted.current) {
-        pianoStarted.current = true;
-        activeTrackRef.current = "gift";
-        pianoMusic.playMuted();
-      } else {
-        activeTrackRef.current = "gift";
-      }
-      // 立即滚动，不等 birthday song fadeOut（fadeOut 最多1.2s，不应阻塞视觉跳转）
+      await ensureBirthdaySongStopped();
+      pianoMusic.fadeIn(0.65);
+      setMusicOn(true);
+      // 立即滚动（桌面 rAF，移动端延迟 100ms 等 scroll-snap 稳定）
       const isTouchDevice =
         typeof window !== "undefined" &&
         ("ontouchstart" in window ||
@@ -251,11 +259,7 @@ export function ResultPageShell({
       } else {
         requestAnimationFrame(() => { scrollToSection(scene5Ref.current); });
       }
-      await ensureBirthdaySongStopped();
-      pianoMusic.fadeIn(0.65);
-      setMusicOn(true);
     };
-
     void openGiftFlow();
   }, [ensureBirthdaySongStopped, pianoMusic, scrollToSection]);
 
@@ -417,7 +421,7 @@ export function ResultPageShell({
         onMicPromptChange={handleMicPromptChange}
       />
 
-      <Scene4Gift sectionRef={giftRef} onOpen={handleGiftOpen} onEnter={handleGiftEnter} />
+      <Scene4Gift sectionRef={giftRef} onTap={handleGiftTap} onOpen={handleGiftOpen} onEnter={handleGiftEnter} />
 
       <Scene5Letter
         sectionRef={scene5Ref}
