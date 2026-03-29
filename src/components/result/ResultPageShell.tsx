@@ -363,6 +363,34 @@ export function ResultPageShell({
     };
   }, [birthdaySong, pianoMusic]);
 
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // 移动端：监听 scroll 容器滚动，蛋糕幕离屏后强制淡出 birthday song
+  // 比子组件内部检测更可靠——容器自身的 scroll 事件在所有移动端浏览器中稳定触发
+  useEffect(() => {
+    const isTouchDevice =
+      typeof window !== "undefined" &&
+      ("ontouchstart" in window ||
+        (typeof window.matchMedia === "function" &&
+          window.matchMedia("(hover: none) and (pointer: coarse)").matches));
+    if (!isTouchDevice) return;
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const onScroll = () => {
+      // 蛋糕幕是第4个 section（index 3），每个 section 高度 100dvh
+      // scrollTop 超过 3.5 个屏幕高度说明已滚过蛋糕幕
+      if (container.scrollTop > window.innerHeight * 3.5) {
+        if (birthdayExitedCakeRef.current) return; // 已经处理过，不重复
+        birthdayExitedCakeRef.current = true;
+        birthdaySongStarted.current = true;  // 强制重置，防止 autoplay 重试期间值为 false
+        birthdayFadePromiseRef.current = null; // 清除卡住的 promise 锁
+        void ensureBirthdaySongStopped();
+      }
+    };
+    container.addEventListener("scroll", onScroll, { passive: true });
+    return () => container.removeEventListener("scroll", onScroll);
+  }, [ensureBirthdaySongStopped]);
+
   if (!data) {
     return (
       <div className="h-dvh flex items-center justify-center" style={{ background: "#080d1a" }}>
@@ -398,7 +426,7 @@ export function ResultPageShell({
   })();
 
   return (
-    <div className="scroll-snap-y relative" style={{ background: "#080d1a" }}>
+    <div ref={scrollContainerRef} className="scroll-snap-y relative" style={{ background: "#080d1a" }}>
       <CosmicBackground />
       <PageTransitionOverlay leaving={navigatingAway} entering />
 
@@ -449,7 +477,13 @@ export function ResultPageShell({
 
       <Scene4_5Candle
         onEnter={handleCandleEnter}
-        onExiting={() => { void ensureBirthdaySongStopped(); }}
+        onExiting={() => {
+          birthdayExitedCakeRef.current = true;
+          // 强制重置，防止 birthdaySongStarted=false 或卡住的 promise 拦截 fadeOut
+          birthdaySongStarted.current = true;
+          birthdayFadePromiseRef.current = null;
+          void ensureBirthdaySongStopped();
+        }}
         onBlown={handleCandleBlown}
         onMicEnded={handleMicEnded}
         onMicPromptChange={handleMicPromptChange}

@@ -481,7 +481,7 @@ export function Scene4_5Candle({ onBlown, onEnter, onExiting, onMicEnded, onMicP
       // scroll-snap 滑动时 touchmove/scroll 事件均不可靠，轮询是唯一稳定方案
       const poll = window.setInterval(() => {
         const rect = el.getBoundingClientRect();
-        if (rect.bottom < 0 || rect.top > window.innerHeight) {
+        if (rect.bottom <= 10 || rect.top >= window.innerHeight - 10) {
           triggerExitWithSong();
         }
       }, 200);
