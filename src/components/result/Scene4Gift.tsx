@@ -44,6 +44,9 @@ export function Scene4Gift({ onOpen, onTap, onEnter, sectionRef: externalSection
       img.src = url;
     });
   }, []);
+
+  // 进入视口时通知外部（用于停止 birthdaySong）
+  useEffect(() => {
     const el = internalSectionRef.current;
     if (!el) return;
     const scrollRoot = el.closest(".scroll-snap-y");
