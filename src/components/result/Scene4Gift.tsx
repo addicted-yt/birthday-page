@@ -36,8 +36,14 @@ export function Scene4Gift({ onOpen, onTap, onEnter, sectionRef: externalSection
     onTapRef.current = onTap;
   }, [onEnter, onTap]);
 
-  // 进入视口时通知外部（用于停止 birthdaySong）
+  // 预加载粒子图片，避免移动端首次点击时图片未加载导致粒子不显示
   useEffect(() => {
+    const urls = ["/emoji/balloon.png", "/emoji/confetti_ball.png", "/emoji/tada.png"];
+    urls.forEach((url) => {
+      const img = new window.Image();
+      img.src = url;
+    });
+  }, []);
     const el = internalSectionRef.current;
     if (!el) return;
     const scrollRoot = el.closest(".scroll-snap-y");

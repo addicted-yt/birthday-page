@@ -211,10 +211,12 @@ export function ResultPageShell({
   }, [birthdaySong]);
 
   const handleCandleEnter = useCallback(() => {
+    console.log('[DEBUG handleCandleEnter] called, birthdaySongStarted:', birthdaySongStarted.current);
     if (birthdaySongStarted.current) return;
     birthdaySongStarted.current = true;
     activeTrackRef.current = "birthday";
     birthdaySong.fadeIn(0.72, () => {
+      console.log('[DEBUG handleCandleEnter] fadeIn blocked, resetting');
       // autoplay policy 阻止：重置状态后自动重试一次（延迟等待 unlock 完成）
       birthdaySongStarted.current = false;
       activeTrackRef.current = null;
@@ -223,6 +225,7 @@ export function ResultPageShell({
       // 若用户已经离开蛋糕幕则不重试
       window.setTimeout(() => {
         if (birthdaySongStarted.current || birthdayExitedCakeRef.current) return;
+        console.log('[DEBUG handleCandleEnter] retrying fadeIn');
         handleCandleEnterRef.current();
       }, 600);
     });
@@ -269,6 +272,7 @@ export function ResultPageShell({
       pianoStarted.current = true;
       activeTrackRef.current = "gift";
       pianoMusic.playMuted();
+      setMusicOn(true); // 立即设置，确保按钮渲染时状态正确（音乐已开始播放，虽然静音）
     } else {
       activeTrackRef.current = "gift";
     }
@@ -304,7 +308,9 @@ export function ResultPageShell({
 
   const handleEndingVisible = useCallback(() => {
     setEndingVisible(true);
-  }, []);
+    // 同步按钮状态与实际播放状态，防止状态流转中的时序问题导致显示错误
+    setMusicOn(pianoMusic.isPlaying() || birthdaySong.isPlaying());
+  }, [pianoMusic, birthdaySong]);
 
   const handleNavigateAway = useCallback(() => {
     cancelFirstInteraction();
