@@ -197,8 +197,8 @@ export function ResultPageShell({
         birthdaySongStarted.current = false;
         if (activeTrackRef.current === "birthday") {
           activeTrackRef.current = null;
+          setMusicOn(false); // 只有当前 track 是 birthday 时才关闭音乐状态
         }
-        setMusicOn(false);
         birthdayFadePromiseRef.current = null;
         resolve();
       });
@@ -380,7 +380,9 @@ export function ResultPageShell({
       // 蛋糕幕是第4个 section（index 3），每个 section 高度 100dvh
       // scrollTop 超过 3.5 个屏幕高度说明已滚过蛋糕幕
       if (container.scrollTop > window.innerHeight * 3.5) {
+        console.log('[DEBUG] scroll detected, scrollTop:', container.scrollTop, 'threshold:', window.innerHeight * 3.5, 'birthdayExited:', birthdayExitedCakeRef.current);
         if (birthdayExitedCakeRef.current) return; // 已经处理过，不重复
+        console.log('[DEBUG] triggering ensureBirthdaySongStopped');
         birthdayExitedCakeRef.current = true;
         birthdaySongStarted.current = true;  // 强制重置，防止 autoplay 重试期间值为 false
         birthdayFadePromiseRef.current = null; // 清除卡住的 promise 锁
@@ -424,6 +426,23 @@ export function ResultPageShell({
       };
     });
   })();
+
+  // 临时调试：移动端加载 vConsole
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const isTouchDevice =
+      "ontouchstart" in window ||
+      (typeof window.matchMedia === "function" &&
+        window.matchMedia("(hover: none) and (pointer: coarse)").matches);
+    if (!isTouchDevice) return;
+    const script = document.createElement("script");
+    script.src = "https://unpkg.com/vconsole@latest/dist/vconsole.min.js";
+    script.onload = () => {
+      // @ts-ignore
+      new window.VConsole();
+    };
+    document.head.appendChild(script);
+  }, []);
 
   return (
     <div ref={scrollContainerRef} className="scroll-snap-y relative" style={{ background: "#080d1a" }}>
