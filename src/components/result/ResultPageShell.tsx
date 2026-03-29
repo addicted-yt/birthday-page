@@ -111,7 +111,7 @@ export function ResultPageShell({
     return `https://thesedays.cn/result?d=${rawD}${rawName ? `&name=${rawName}` : ""}`;
   })();
 
-  const scrollToSection = useCallback((target: HTMLElement | null, delay = 0) => {
+  const scrollToSection = useCallback((target: HTMLElement | null, delay = 0, forceSmooth = false) => {
     if (!target) return;
     const run = () => {
       const snapContainer = target.closest(".scroll-snap-y") as HTMLElement | null;
@@ -121,12 +121,12 @@ export function ResultPageShell({
           "ontouchstart" in window ||
           (typeof window.matchMedia === "function" &&
             window.matchMedia("(hover: none) and (pointer: coarse)").matches);
-        if (isTouchDevice) {
+        if (isTouchDevice && !forceSmooth) {
           // iOS Safari 上 smooth scrollTo 在 scroll-snap 容器里经常被忽略
           // 用 instant 跳转，scroll-snap 会自动 settle 到 snap 点
           snapContainer.scrollTo({ top: targetTop, behavior: "instant" });
         } else {
-          // 桌面端保持平滑滚动
+          // 桌面端或强制平滑：保持平滑滚动
           snapContainer.scrollTo({ top: targetTop, behavior: "smooth" });
           window.setTimeout(() => {
             snapContainer.scrollTo({ top: target.offsetTop, behavior: "smooth" });
@@ -303,7 +303,8 @@ export function ResultPageShell({
 
   const handleLetterDone = useCallback(() => {
     if (!scene5PhotosRef.current) return;
-    scrollToSection(scene5PhotosRef.current, 300);
+    // 信件→礼物图是叙事性过渡，需要平滑动效，不用 instant
+    scrollToSection(scene5PhotosRef.current, 300, true);
   }, [scrollToSection]);
 
   const handleEndingVisible = useCallback(() => {

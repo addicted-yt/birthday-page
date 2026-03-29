@@ -187,7 +187,14 @@ export function Scene4Gift({ onOpen, onTap, onEnter, sectionRef: externalSection
                 animate={{ x: p.x, y: p.y, opacity: 0, scale: p.scale, rotate: p.rotation }}
                 transition={{ duration: 1.2, ease: "easeOut" }}
               >
-              <EmojiImage emoji={p.emoji} size={36} />
+              {/* 粒子用原生 img 直接加载 /emoji/*.png，避免 Next.js Image 优化 URL 导致预加载失效 */}
+              <img
+                src={p.emoji === "balloon" ? "/emoji/balloon.png" : p.emoji === "confetti" ? "/emoji/confetti_ball.png" : "/emoji/tada.png"}
+                width={36}
+                height={36}
+                alt=""
+                draggable={false}
+              />
               </motion.div>
             ))}
           </AnimatePresence>
