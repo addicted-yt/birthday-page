@@ -20,6 +20,8 @@ export function Scene0Curtain({ onStart }: Scene0CurtainProps) {
         justifyContent: "center",
         background: "#080d1a",
         gap: "clamp(2rem, 6vw, 3.5rem)",
+        pointerEvents: "auto",
+        touchAction: "none",
       }}
       initial={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 1.06, filter: "blur(12px)" }}

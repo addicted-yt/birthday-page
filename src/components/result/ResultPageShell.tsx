@@ -278,6 +278,7 @@ export function ResultPageShell({
   const handleGiftOpen = useCallback(() => {
     const openGiftFlow = async () => {
       setGiftOpened(true);  // 在这里设置，确保信件动画在滚动后才开始
+      activeTrackRef.current = "gift"; // 提前设置，防止 ensureBirthdaySongStopped 的 onDone 覆盖 musicOn
       // 立即滚动，不等 birthday song fadeOut
       const isTouchDevice =
         typeof window !== "undefined" &&
