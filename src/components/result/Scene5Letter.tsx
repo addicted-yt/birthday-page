@@ -51,12 +51,7 @@ export function Scene5Letter({
 
   const totalLines = allLines.length;
   const LINE_INTERVAL = 780;
-  const fontSize =
-    totalLines > 12
-      ? "clamp(0.82rem, 2.2vw, 1.1rem)"
-      : totalLines > 8
-        ? "clamp(0.9rem, 2.5vw, 1.25rem)"
-        : "clamp(1rem, 2.8vw, 1.4rem)";
+  const fontSize = "clamp(1rem, 2.8vw, 1.4rem)";
 
   const recalcTranslate = useCallback((count: number) => {
     if (!clipRef.current || !containerRef.current || count === 0 || isCenteredMode.current) return;

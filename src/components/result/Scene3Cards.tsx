@@ -122,7 +122,7 @@ function CardFace({ photo, index }: { photo: CardPhoto; index: number }) {
   return (
     <>
       {photo.dataUrl ? (
-        <img src={photo.dataUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
+        <img src={photo.dataUrl} alt="" className="w-full h-full object-cover" />
       ) : (
         <div
           className="w-full h-full"
@@ -299,8 +299,11 @@ function CardItem({
         }}
       >
         <CardFace photo={photo} index={index} />
-        <CaptionLayer photo={photo} bright={captionBright} />
       </motion.div>
+      {/* caption 放在 overflow-hidden 容器外，避免 3D 旋转时被裁剪 */}
+      <div className="absolute inset-0 pointer-events-none">
+        <CaptionLayer photo={photo} bright={captionBright} />
+      </div>
     </motion.div>
   );
 }

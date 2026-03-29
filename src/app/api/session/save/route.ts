@@ -63,8 +63,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: "数据格式错误或超出限制" }, { status: 400 });
     }
 
-    // 校验是合法 JSON
-    JSON.parse(body);
+    // 校验是合法 JSON，同时剥掉 dataUrl（图片已上传 R2，只保留 imageKey）
+    const parsed = JSON.parse(body);
+    if (parsed.cardPhotos) {
+      parsed.cardPhotos = parsed.cardPhotos.map((p: Record<string, unknown>) => {
+        const { dataUrl: _, ...rest } = p;
+        return rest;
+      });
+    }
+    if (parsed.giftImages) {
+      parsed.giftImages = parsed.giftImages.map((g: Record<string, unknown>) => {
+        const { dataUrl: _, ...rest } = g;
+        return rest;
+      });
+    }
+    const cleanBody = JSON.stringify(parsed);
 
     const sid = generateSid();
     const bucket = getR2Bucket();
@@ -74,7 +87,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ sid: `local-${sid}` });
     }
 
-    await bucket.put(`session/${sid}.json`, body, {
+    await bucket.put(`session/${sid}.json`, cleanBody, {
       httpMetadata: { contentType: "application/json" },
     });
 
