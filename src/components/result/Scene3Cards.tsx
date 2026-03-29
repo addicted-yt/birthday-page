@@ -313,7 +313,9 @@ interface Scene3CardsProps {
 export function Scene3Cards({ cardPhotos }: Scene3CardsProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
-  const [brightSet, setBrightSet] = useState<Set<number>>(new Set());
+  // 用 ref 存储已点开过的卡片索引，避免 Set 在频繁重渲染中读到旧值
+  const brightSetRef = useRef<Set<number>>(new Set());
+  const [brightRevision, setBrightRevision] = useState(0);
   const [containerW, setContainerW] = useState(0);
   const [isMobileDevice] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -356,7 +358,8 @@ export function Scene3Cards({ cardPhotos }: Scene3CardsProps) {
 
   const handleExpand = (i: number) => {
     setExpandedIndex(i);
-    setBrightSet((prev) => new Set(prev).add(i));
+    brightSetRef.current.add(i);
+    setBrightRevision((v) => v + 1); // 触发重渲染使 captionBright 更新
   };
 
   const toggleFan = () => {
@@ -472,7 +475,7 @@ export function Scene3Cards({ cardPhotos }: Scene3CardsProps) {
               expandedX={expandedX}
               expandedY={expandedY}
               expandedRotate={expandedRotate}
-              captionBright={brightSet.has(i)}
+              captionBright={brightSetRef.current.has(i)}
               isMobile={isMobileDevice}
               onExpand={() => handleExpand(i)}
             />

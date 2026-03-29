@@ -4,7 +4,7 @@ import { ResultContent } from "./ResultContent";
 import { decodeBirthdayTextData } from "@/lib/urlEncoding";
 
 interface Props {
-  searchParams: Promise<{ d?: string; sid?: string; name?: string; creator?: string }>;
+  searchParams: Promise<{ d?: string; sid?: string; lsid?: string; name?: string; creator?: string }>;
 }
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
@@ -26,9 +26,9 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const title = `送给 ${name} 的生日祝福`;
   const description = "一份专属的沉浸式生日祝福";
   const ogImageUrl = new URL(`/result/opengraph-image?name=${encodeURIComponent(name)}`, siteUrl).toString();
-  // URLSearchParams 会对值再次 encodeURIComponent，导致 + 号被编码为 %2B
-  // 直接手动拼接原始参数字符串，保留 d/name 参数的原始编码
+  // 新链接格式：sid + name，旧链接：d + name，均需支持
   const resultParts: string[] = [];
+  if (params.sid) resultParts.push(`sid=${params.sid}`);
   if (params.d) resultParts.push(`d=${params.d}`);
   if (params.name) resultParts.push(`name=${params.name}`);
   if (params.creator) resultParts.push(`creator=${params.creator}`);

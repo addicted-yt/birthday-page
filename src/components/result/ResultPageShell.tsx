@@ -31,6 +31,7 @@ const CosmicBackground = dynamic(
 interface ResultPageShellProps {
   encodedData: string | null;
   sessionId: string | null;
+  remoteSessionId?: string | null; // R2 session ID，优先从服务端拉取数据
   encodedName?: string | null;
   isCreator?: boolean;
   showHomeButton?: boolean;
@@ -42,6 +43,7 @@ interface ResultPageShellProps {
 export function ResultPageShell({
   encodedData,
   sessionId,
+  remoteSessionId,
   encodedName,
   isCreator = false,
   showHomeButton = false,
@@ -63,7 +65,8 @@ export function ResultPageShell({
   const [data, setData] = useState<BirthdayData | null>(
     propData ||
       decodedFromUrl ||
-      (encodedData
+      // 有 remoteSessionId 时先用名字占位，等异步拉取完成后再更新
+      (remoteSessionId || encodedData
         ? ({
             v: 1,
             name: fallbackName,
@@ -73,7 +76,25 @@ export function ResultPageShell({
           } as BirthdayData)
         : null)
   );
-  const [decodeError] = useState(Boolean(!propData && encodedData && !decodedFromUrl));
+  const [decodeError] = useState(Boolean(!propData && encodedData && !decodedFromUrl && !remoteSessionId));
+
+  // 优先从服务端按 remoteSessionId 拉取完整数据
+  useEffect(() => {
+    if (propData || decodedFromUrl || !remoteSessionId) return;
+    fetch(`/api/session/${encodeURIComponent(remoteSessionId)}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("session not found");
+        return res.json() as Promise<BirthdayData>;
+      })
+      .then((fetched) => {
+        setData(fetched);
+      })
+      .catch(() => {
+        // 服务端拉取失败，降级到 d= 参数（旧链接兼容）
+        // 如果 d= 也没有，则保持空壳（只有名字）
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [navigatingAway, setNavigatingAway] = useState(false);
   const [giftOpened, setGiftOpened] = useState(false);
   const [endingVisible, setEndingVisible] = useState(false);
@@ -100,17 +121,26 @@ export function ResultPageShell({
   const scene5Ref = useRef<HTMLElement | null>(null);
   const scene5PhotosRef = useRef<HTMLElement | null>(null);
 
-  // shareUrl 必须从原始 location.search 截取 d/name 参数，不能用 searchParams.get()
-  // 因为 searchParams.get 会把 + 解码成空格，重新拼 URL 就会出现空格导致链接断裂
+  // 新链接格式：sid + name（极短，微信可识别）
+  // 旧链接格式：d + name（降级兼容）
   // origin 固定用 thesedays.cn，确保收件方走 Cloudflare Workers（有 R2 binding）
   const shareUrl = (() => {
-    if (typeof window === "undefined" || !encodedData) return "";
+    if (typeof window === "undefined") return "";
     const raw = window.location.search;
-    const dMatch = raw.match(/[?&]d=([^&]*)/);
-    const rawD = dMatch ? dMatch[1] : encodeURIComponent(encodedData);
     const nameMatch = raw.match(/[?&]name=([^&]*)/);
     const rawName = nameMatch ? nameMatch[1] : (encodedName ? encodeURIComponent(encodedName) : null);
-    return `https://thesedays.cn/result?d=${rawD}${rawName ? `&name=${rawName}` : ""}`;
+    const namePart = rawName ? `&name=${rawName}` : "";
+    // 优先用短 sid 链接
+    if (remoteSessionId && !remoteSessionId.startsWith("local-")) {
+      return `https://thesedays.cn/result?sid=${remoteSessionId}${namePart}`;
+    }
+    // 降级：旧 d= 链接（兼容旧版本生成的链接）
+    if (encodedData) {
+      const dMatch = raw.match(/[?&]d=([^&]*)/);
+      const rawD = dMatch ? dMatch[1] : encodeURIComponent(encodedData);
+      return `https://thesedays.cn/result?d=${rawD}${namePart}`;
+    }
+    return "";
   })();
 
   const scrollToSection = useCallback((target: HTMLElement | null, delay = 0, forceSmooth = false) => {
@@ -191,14 +221,11 @@ export function ResultPageShell({
   }, [data?.cardPhotos.map((photo) => photo.imageKey).join(","), data?.giftImages.map((image) => image.imageKey).join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const ensureBirthdaySongStopped = useCallback(() => {
-    console.log('[DEBUG ensureBirthdaySongStopped] called, birthdayFadePromiseRef:', !!birthdayFadePromiseRef.current, 'birthdaySongStarted:', birthdaySongStarted.current);
     if (birthdayFadePromiseRef.current) return birthdayFadePromiseRef.current;
     if (!birthdaySongStarted.current) return Promise.resolve();
 
-    console.log('[DEBUG ensureBirthdaySongStopped] calling birthdaySong.fadeOut');
     birthdayFadePromiseRef.current = new Promise<void>((resolve) => {
       birthdaySong.fadeOut(() => {
-        console.log('[DEBUG ensureBirthdaySongStopped] fadeOut onDone callback');
         birthdaySongStarted.current = false;
         if (activeTrackRef.current === "birthday") {
           activeTrackRef.current = null;
@@ -213,12 +240,10 @@ export function ResultPageShell({
   }, [birthdaySong]);
 
   const handleCandleEnter = useCallback(() => {
-    console.log('[DEBUG handleCandleEnter] called, birthdaySongStarted:', birthdaySongStarted.current);
     if (birthdaySongStarted.current) return;
     birthdaySongStarted.current = true;
     activeTrackRef.current = "birthday";
     birthdaySong.fadeIn(0.72, () => {
-      console.log('[DEBUG handleCandleEnter] fadeIn blocked, resetting');
       // autoplay policy 阻止：重置状态后自动重试一次（延迟等待 unlock 完成）
       birthdaySongStarted.current = false;
       activeTrackRef.current = null;
@@ -227,7 +252,6 @@ export function ResultPageShell({
       // 若用户已经离开蛋糕幕则不重试
       window.setTimeout(() => {
         if (birthdaySongStarted.current || birthdayExitedCakeRef.current) return;
-        console.log('[DEBUG handleCandleEnter] retrying fadeIn');
         handleCandleEnterRef.current();
       }, 600);
     });
@@ -407,9 +431,7 @@ export function ResultPageShell({
       // 蛋糕幕是第4个 section（index 3），每个 section 高度 100dvh
       // scrollTop 超过 3.5 个屏幕高度说明已滚过蛋糕幕
       if (container.scrollTop > window.innerHeight * 3.5) {
-        console.log('[DEBUG] scroll detected, scrollTop:', container.scrollTop, 'threshold:', window.innerHeight * 3.5, 'birthdayExited:', birthdayExitedCakeRef.current);
         if (birthdayExitedCakeRef.current) return; // 已经处理过，不重复
-        console.log('[DEBUG] triggering ensureBirthdaySongStopped');
         birthdayExitedCakeRef.current = true;
         birthdaySongStarted.current = true;  // 强制重置，防止 autoplay 重试期间值为 false
         birthdayFadePromiseRef.current = null; // 清除卡住的 promise 锁
@@ -453,23 +475,6 @@ export function ResultPageShell({
       };
     });
   })();
-
-  // 临时调试：移动端加载 vConsole
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const isTouchDevice =
-      "ontouchstart" in window ||
-      (typeof window.matchMedia === "function" &&
-        window.matchMedia("(hover: none) and (pointer: coarse)").matches);
-    if (!isTouchDevice) return;
-    const script = document.createElement("script");
-    script.src = "https://unpkg.com/vconsole@latest/dist/vconsole.min.js";
-    script.onload = () => {
-      // @ts-ignore
-      new window.VConsole();
-    };
-    document.head.appendChild(script);
-  }, []);
 
   return (
     <div ref={scrollContainerRef} className="scroll-snap-y relative" style={{ background: "#080d1a" }}>

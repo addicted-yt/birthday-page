@@ -97,6 +97,7 @@ export function StepFlow({ restoreSid }: { restoreSid?: string | null }) {
     const cardPhotos = await Promise.all(
       state.cardPhotos.map(async (p) => {
         if (!p.dataUrl) return p;
+        if (p.imageKey) return p; // 已上传过，直接复用，不重复上传
         // 存入本地 IndexedDB（创建者永久可用）
         const localKey = `card-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
         await idbPut(localKey, p.dataUrl);
@@ -108,6 +109,7 @@ export function StepFlow({ restoreSid }: { restoreSid?: string | null }) {
     const giftImages = await Promise.all(
       state.giftImages.map(async (g) => {
         if (!g.dataUrl) return g;
+        if (g.imageKey) return g; // 已上传过，直接复用，不重复上传
         const localKey = `gift-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
         await idbPut(localKey, g.dataUrl);
         const imageKey = await uploadImageToR2(g.dataUrl);
@@ -117,30 +119,40 @@ export function StepFlow({ restoreSid }: { restoreSid?: string | null }) {
     return { cardPhotos, giftImages };
   };
 
-  const buildUrl = (cardPhotos: typeof state.cardPhotos, giftImages: typeof state.giftImages) => {
-    const { d, sid, name } = encodeBirthdayData({
-      v: 1,
-      name: state.name,
-      cardPhotos,
-      giftLetter: state.giftLetter,
-      letterAlign: state.letterAlign,
-      giftImages,
-      placeholderPhrases: state.placeholderPhrases,
-      placeholderStyles: state.placeholderStyles,
-    });
-    return { d, sid, name, url: `${window.location.origin}/result?d=${d}&sid=${sid}&name=${name}` };
-  };
-
   const handlePreview = async () => {
     setUploading(true);
     setUploadError(null);
     try {
       const { cardPhotos, giftImages } = await prepareImages();
-      const { d, sid, name } = buildUrl(cardPhotos, giftImages);
+
+      // 把完整 BirthdayData 存到 R2，分享链接只传短 sid，避免 URL 过长导致微信无法识别
+      const birthdayData: BirthdayData = {
+        v: 1 as const,
+        name: state.name,
+        cardPhotos,
+        giftLetter: state.giftLetter,
+        letterAlign: state.letterAlign,
+        giftImages,
+        placeholderPhrases: state.placeholderPhrases,
+        placeholderStyles: state.placeholderStyles,
+      };
+      const saveRes = await fetch("/api/session/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(birthdayData),
+      });
+      if (!saveRes.ok) throw new Error("session save failed");
+      const { sid: sessionSid } = await saveRes.json() as { sid: string };
+
+      // 同时保存到 sessionStorage 供预览页「继续修改」功能恢复状态
+      const { sid: localSid } = encodeBirthdayData(birthdayData);
+      try { sessionStorage.setItem(localSid, JSON.stringify(birthdayData)); } catch { /* ignore */ }
+
+      const encodedName = encodeURIComponent(state.name);
       setNavigatingAway(true);
-      setTimeout(() => router.push(`/result?d=${d}&sid=${sid}&name=${name}&creator=1`), 380);
+      setTimeout(() => router.push(`/result?sid=${sessionSid}&lsid=${localSid}&name=${encodedName}&creator=1`), 380);
     } catch {
-      setUploadError("图片上传失败，请检查网络后重试");
+      setUploadError("上传失败，请检查网络后重试");
       setUploading(false);
     }
   };

@@ -139,7 +139,6 @@ export function useAudioPlayer(src: string) {
 
   const fadeOut = useCallback((onDone?: () => void) => {
     const audio = getAudio();
-    console.log('[DEBUG fadeOut] called, audio:', !!audio, 'volume:', audio?.volume, 'paused:', audio?.paused);
     if (!audio) return;
     playingRef.current = false;
     clearFade();
@@ -155,9 +154,7 @@ export function useAudioPlayer(src: string) {
       // 检测 volume 是否卡住：比较这次读取和上次读取
       if (Math.abs(currentVolume - lastReadVolume) < 0.001) {
         stuckCount++;
-        console.log('[DEBUG fadeOut] volume stuck, stuckCount:', stuckCount, 'current:', currentVolume, 'last:', lastReadVolume);
         if (stuckCount >= 3) {
-          console.log('[DEBUG fadeOut] volume not changing, force pause');
           try { audio.volume = 0; } catch { /* ignore */ }
           audio.pause();
           clearFade();
@@ -169,7 +166,6 @@ export function useAudioPlayer(src: string) {
       }
 
       const next = parseFloat((currentVolume - 0.06).toFixed(3));
-      console.log('[DEBUG fadeOut interval] step:', stepCount, 'volume:', currentVolume, 'next:', next);
 
       if (next > 0.01 && stepCount < 25) {
         try { audio.volume = next; } catch { /* ignore */ }
@@ -177,7 +173,6 @@ export function useAudioPlayer(src: string) {
         try { audio.volume = 0; } catch { /* ignore */ }
         audio.pause();
         clearFade();
-        console.log('[DEBUG fadeOut] completed, calling onDone');
         onDone?.();
       }
 
