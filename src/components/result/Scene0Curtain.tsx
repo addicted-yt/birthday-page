@@ -61,7 +61,7 @@ export function Scene0Curtain({ onStart }: Scene0CurtainProps) {
             margin: 0,
           }}
         >
-          即将开始一段带有音乐的体验
+          即将开始一段中途带有音乐的体验
         </p>
         <p
           style={{

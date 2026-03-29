@@ -252,6 +252,10 @@ export function ResultPageShell({
 
   const handleGiftEnter = useCallback(() => {
     birthdayExitedCakeRef.current = true;
+    // 强制重置状态，确保 ensureBirthdaySongStopped 不被 birthdaySongStarted=false 拦截
+    // 移动端 autoplay 重试期间 birthdaySongStarted 可能为 false，但 audio 实际在播
+    birthdaySongStarted.current = true;
+    birthdayFadePromiseRef.current = null;
     void ensureBirthdaySongStopped();
   }, [ensureBirthdaySongStopped]);
 
