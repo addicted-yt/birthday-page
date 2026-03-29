@@ -126,18 +126,23 @@ export function useAudioPlayer(src: string) {
 
   const fadeOut = useCallback((onDone?: () => void) => {
     const audio = getAudio();
+    console.log('[DEBUG fadeOut] called, audio:', !!audio, 'volume:', audio?.volume, 'paused:', audio?.paused);
     if (!audio) return;
     playingRef.current = false;
     clearFade();
     // 步长加大（0.06），避免 iOS 精度问题导致 interval 永远不结束
+    let stepCount = 0;
     fadeTimerRef.current = setInterval(() => {
+      stepCount++;
       const next = parseFloat((audio.volume - 0.06).toFixed(3));
+      console.log('[DEBUG fadeOut interval] step:', stepCount, 'volume:', audio.volume, 'next:', next);
       if (next > 0.01) {
         try { audio.volume = next; } catch { /* ignore */ }
       } else {
         try { audio.volume = 0; } catch { /* ignore */ }
         audio.pause();
         clearFade();
+        console.log('[DEBUG fadeOut] completed, calling onDone');
         onDone?.();
       }
     }, 80);

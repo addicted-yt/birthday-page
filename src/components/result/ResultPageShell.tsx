@@ -189,11 +189,14 @@ export function ResultPageShell({
   }, [data?.cardPhotos.map((photo) => photo.imageKey).join(","), data?.giftImages.map((image) => image.imageKey).join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const ensureBirthdaySongStopped = useCallback(() => {
+    console.log('[DEBUG ensureBirthdaySongStopped] called, birthdayFadePromiseRef:', !!birthdayFadePromiseRef.current, 'birthdaySongStarted:', birthdaySongStarted.current);
     if (birthdayFadePromiseRef.current) return birthdayFadePromiseRef.current;
     if (!birthdaySongStarted.current) return Promise.resolve();
 
+    console.log('[DEBUG ensureBirthdaySongStopped] calling birthdaySong.fadeOut');
     birthdayFadePromiseRef.current = new Promise<void>((resolve) => {
       birthdaySong.fadeOut(() => {
+        console.log('[DEBUG ensureBirthdaySongStopped] fadeOut onDone callback');
         birthdaySongStarted.current = false;
         if (activeTrackRef.current === "birthday") {
           activeTrackRef.current = null;
