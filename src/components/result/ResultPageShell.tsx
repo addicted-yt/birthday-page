@@ -291,8 +291,8 @@ export function ResultPageShell({
         requestAnimationFrame(() => { scrollToSection(scene5Ref.current); });
       }
       await ensureBirthdaySongStopped();
+      setMusicOn(true); // 提前设置，确保按钮渲染时状态已更新
       pianoMusic.fadeIn(0.65);
-      setMusicOn(true);
     };
     void openGiftFlow();
   }, [ensureBirthdaySongStopped, pianoMusic, scrollToSection]);
