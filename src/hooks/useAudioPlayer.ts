@@ -130,13 +130,31 @@ export function useAudioPlayer(src: string) {
     if (!audio) return;
     playingRef.current = false;
     clearFade();
-    // 步长加大（0.06），避免 iOS 精度问题导致 interval 永远不结束
+
+    // 移动端检测：volume 是否可写（iOS 不支持设置 volume）
+    const originalVolume = audio.volume;
+    audio.volume = 0.5;
+    const volumeWritable = Math.abs(audio.volume - 0.5) < 0.01;
+    audio.volume = originalVolume;
+    console.log('[DEBUG fadeOut] volumeWritable:', volumeWritable);
+
+    if (!volumeWritable) {
+      // 移动端不支持设置 volume，直接 pause
+      console.log('[DEBUG fadeOut] volume not writable, direct pause');
+      try { audio.volume = 0; } catch { /* ignore */ }
+      audio.pause();
+      onDone?.();
+      return;
+    }
+
+    // 桌面端或支持 volume 的移动端：渐变淡出
     let stepCount = 0;
+    const maxSteps = 20; // 最多 20 步（1.6s），防止卡死
     fadeTimerRef.current = setInterval(() => {
       stepCount++;
       const next = parseFloat((audio.volume - 0.06).toFixed(3));
       console.log('[DEBUG fadeOut interval] step:', stepCount, 'volume:', audio.volume, 'next:', next);
-      if (next > 0.01) {
+      if (next > 0.01 && stepCount < maxSteps) {
         try { audio.volume = next; } catch { /* ignore */ }
       } else {
         try { audio.volume = 0; } catch { /* ignore */ }
