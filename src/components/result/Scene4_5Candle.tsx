@@ -455,11 +455,11 @@ export function Scene4_5Candle({ onBlown, onEnter, onExiting, onMicEnded, onMicP
   }, []);
 
   useEffect(() => {
-    if (phase !== "done") return;
+    // 吹完蜡烛后（blown 或 done 阶段）就开始监听离屏，不等烟雾动画结束
+    if (phase !== "blown" && phase !== "done") return;
     const el = sectionRef.current;
     if (!el) return;
 
-    let touchStartY = 0;
     const triggerExit = () => {
       if (hasExitedRef.current) return;
       hasExitedRef.current = true;
@@ -470,77 +470,30 @@ export function Scene4_5Candle({ onBlown, onEnter, onExiting, onMicEnded, onMicP
       triggerExit();
     };
 
-    const onWheel = (event: WheelEvent) => {
-      if (event.deltaY > 0) triggerExitWithSong();
-    };
-
-    const onTouchStart = (event: TouchEvent) => {
-      touchStartY = event.touches[0].clientY;
-    };
-
-    const onTouchMove = (event: TouchEvent) => {
-      if (touchStartY - event.touches[0].clientY > 12) triggerExitWithSong();
-    };
-
-    // scroll 容器滚动时检测蛋糕幕是否离屏（仅移动端：桌面靠 wheel 事件已足够可靠）
-    const scrollRoot = el.closest(".scroll-snap-y") as HTMLElement | null;
     const isTouchDevice =
       typeof window !== "undefined" &&
       ("ontouchstart" in window ||
         (typeof window.matchMedia === "function" &&
           window.matchMedia("(hover: none) and (pointer: coarse)").matches));
-    const onScrollContainer = () => {
-      if (!scrollRoot) return;
-      const rect = el.getBoundingClientRect();
-      const containerRect = scrollRoot.getBoundingClientRect();
-      const threshold = containerRect.height * 0.25;
-      // 蛋糕幕顶部超过容器底部25%，或底部低于容器顶部25%，说明已离屏
-      if (rect.bottom < containerRect.top + threshold || rect.top > containerRect.bottom - threshold) {
-        triggerExitWithSong();
-      }
-    };
-    // 移动端 scroll-snap 滑动时 touchmove 不触发，touchend 后延迟等 snap 动画完成再检测
-    const onTouchEnd = () => {
-      if (!scrollRoot) return;
-      window.setTimeout(() => {
+
+    if (isTouchDevice) {
+      // 移动端：主动轮询蛋糕幕位置，不依赖任何事件
+      // scroll-snap 滑动时 touchmove/scroll 事件均不可靠，轮询是唯一稳定方案
+      const poll = window.setInterval(() => {
         const rect = el.getBoundingClientRect();
-        const containerRect = scrollRoot.getBoundingClientRect();
-        const threshold = containerRect.height * 0.25;
-        if (rect.bottom < containerRect.top + threshold || rect.top > containerRect.bottom - threshold) {
+        if (rect.bottom < 0 || rect.top > window.innerHeight) {
           triggerExitWithSong();
         }
-      }, 400);
-    };
-
-    let initialFired = false;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!initialFired) { initialFired = true; return; }
-        if (entry.intersectionRatio < 0.85) {
-          observer.disconnect();
-          triggerExitWithSong();
-        }
-      },
-      {
-        root: scrollRoot,
-        threshold: [0.85, 0.95, 1.0],
-      }
-    );
-
-    el.addEventListener("wheel", onWheel, { passive: true });
-    el.addEventListener("touchstart", onTouchStart, { passive: true });
-    el.addEventListener("touchmove", onTouchMove, { passive: true });
-    if (isTouchDevice && scrollRoot) scrollRoot.addEventListener("scroll", onScrollContainer, { passive: true });
-    if (isTouchDevice) el.addEventListener("touchend", onTouchEnd, { passive: true });
-    observer.observe(el);
-    return () => {
-      el.removeEventListener("wheel", onWheel);
-      el.removeEventListener("touchstart", onTouchStart);
-      el.removeEventListener("touchmove", onTouchMove);
-      if (isTouchDevice && scrollRoot) scrollRoot.removeEventListener("scroll", onScrollContainer);
-      if (isTouchDevice) el.removeEventListener("touchend", onTouchEnd);
-      observer.disconnect();
-    };
+      }, 200);
+      return () => { window.clearInterval(poll); };
+    } else {
+      // 桌面端：wheel 事件已足够可靠，保持不变
+      const onWheel = (event: WheelEvent) => {
+        if (event.deltaY > 0) triggerExitWithSong();
+      };
+      el.addEventListener("wheel", onWheel, { passive: true });
+      return () => { el.removeEventListener("wheel", onWheel); };
+    }
   }, [phase]);
 
   return (
