@@ -6,6 +6,7 @@ export function useAudioPlayer(src: string) {
   const fadeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const playingRef = useRef(false);
   const unlockedRef = useRef(false);
+  const unlockPromiseRef = useRef<Promise<void> | null>(null); // unlock 进行中时的 promise
   const targetVolRef = useRef(0.65); // 记住目标音量，fadeOut 后 fadeIn 可恢复
 
   const getAudio = useCallback(() => {
@@ -63,43 +64,55 @@ export function useAudioPlayer(src: string) {
     audio.volume = 0;
     const p = audio.play();
     if (p) {
-      p.then(() => {
+      unlockPromiseRef.current = p.then(() => {
         audio.pause();
         audio.currentTime = 0;
         audio.muted = prevMuted;
         audio.volume = prevVolume;
-      }).catch(() => {});
+        unlockPromiseRef.current = null;
+      }).catch(() => {
+        unlockPromiseRef.current = null;
+      });
     }
   }, [getAudio]);
 
   const fadeIn = useCallback((targetVolume = 0.65, onBlocked?: () => void) => {
-    const audio = getAudio();
-    if (!audio) return;
-    targetVolRef.current = targetVolume;
-    clearFade();
-    // 从头播放
-    if (audio.currentTime > 0 && !playingRef.current) {
+    const doFadeIn = () => {
+      const audio = getAudio();
+      if (!audio) return;
+      targetVolRef.current = targetVolume;
+      clearFade();
+      // 无条件从头播放，避免 unlock 异步完成前 currentTime 未归零
       audio.currentTime = 0;
-    }
-    const p = audio.play();
-    if (p) {
-      p.then(() => {
+      audio.volume = 0;
+      const p = audio.play();
+      if (p) {
+        p.then(() => {
+          playingRef.current = true;
+          fadeTimerRef.current = setInterval(() => {
+            if (audio.volume < targetVolume - 0.001) {
+              // 步长加大，iOS 上小步长有时被忽略
+              audio.volume = Math.min(targetVolume, parseFloat((audio.volume + 0.04).toFixed(3)));
+            } else {
+              try { audio.volume = targetVolume; } catch { /* ignore */ }
+              clearFade();
+            }
+          }, 80);
+        }).catch(() => {
+          onBlocked?.();
+        });
+      } else {
+        // 老版本浏览器 play() 无返回值
         playingRef.current = true;
-        fadeTimerRef.current = setInterval(() => {
-          if (audio.volume < targetVolume - 0.001) {
-            // 步长加大，iOS 上小步长有时被忽略
-            audio.volume = Math.min(targetVolume, parseFloat((audio.volume + 0.04).toFixed(3)));
-          } else {
-            try { audio.volume = targetVolume; } catch { /* ignore */ }
-            clearFade();
-          }
-        }, 80);
-      }).catch(() => {
-        onBlocked?.();
-      });
+      }
+    };
+
+    // 如果 unlock 仍在进行中（异步 pause/currentTime 还没完成），等它结束再 play
+    // 避免两个 play() 并发导致播放两次或 currentTime 未归零
+    if (unlockPromiseRef.current) {
+      unlockPromiseRef.current.then(doFadeIn);
     } else {
-      // 老版本浏览器 play() 无返回值
-      playingRef.current = true;
+      doFadeIn();
     }
   }, [getAudio, clearFade]);
 

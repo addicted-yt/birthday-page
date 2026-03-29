@@ -82,6 +82,8 @@ export function ResultPageShell({
   const [showCurtain, setShowCurtain] = useState(!isCreator);
   // 引导幕消散动画完成后才渲染底层内容，确保第一幕动画全新开始
   const [curtainDone, setCurtainDone] = useState(isCreator);
+  // 信件→礼物图场景切换遮罩
+  const [letterTransitioning, setLetterTransitioning] = useState(false);
 
   const birthdaySong = useAudioPlayer("/audio/birthday-song.mp3");
   const pianoMusic = useAudioPlayer("/audio/gift-bgm.mp3");
@@ -303,8 +305,22 @@ export function ResultPageShell({
 
   const handleLetterDone = useCallback(() => {
     if (!scene5PhotosRef.current) return;
-    // 信件→礼物图是叙事性过渡，需要平滑动效，不用 instant
-    scrollToSection(scene5PhotosRef.current, 300, true);
+    const isTouchDevice =
+      typeof window !== "undefined" &&
+      ("ontouchstart" in window ||
+        (typeof window.matchMedia === "function" &&
+          window.matchMedia("(hover: none) and (pointer: coarse)").matches));
+    if (isTouchDevice) {
+      // 移动端：遮罩淡入淡出换场，不依赖 iOS scroll-snap 对 smooth 的支持
+      setLetterTransitioning(true);
+      window.setTimeout(() => {
+        scrollToSection(scene5PhotosRef.current);
+        window.setTimeout(() => setLetterTransitioning(false), 280);
+      }, 380);
+    } else {
+      // 桌面端：smooth scroll 效果足够
+      scrollToSection(scene5PhotosRef.current, 300, true);
+    }
   }, [scrollToSection]);
 
   const handleEndingVisible = useCallback(() => {
@@ -459,6 +475,20 @@ export function ResultPageShell({
     <div ref={scrollContainerRef} className="scroll-snap-y relative" style={{ background: "#080d1a" }}>
       <CosmicBackground />
       <PageTransitionOverlay leaving={navigatingAway} entering />
+
+      {/* 信件→礼物图场景切换遮罩 */}
+      <AnimatePresence>
+        {letterTransitioning && (
+          <motion.div
+            key="letter-transition"
+            style={{ position: "fixed", inset: 0, zIndex: 80, background: "#080d1a", pointerEvents: "none" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.32, ease: "easeInOut" }}
+          />
+        )}
+      </AnimatePresence>
 
       <AnimatePresence onExitComplete={() => setCurtainDone(true)}>
         {showCurtain && <Scene0Curtain onStart={handleCurtainStart} />}
