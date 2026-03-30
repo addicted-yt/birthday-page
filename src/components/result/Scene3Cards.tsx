@@ -311,9 +311,10 @@ function CardItem({
 // ─── Scene3Cards ────────────────────────────────────────────────────
 interface Scene3CardsProps {
   cardPhotos: CardPhoto[];
+  forceExpand?: boolean; // 截图模式：强制展开扇形且 caption 全部亮起
 }
 
-export function Scene3Cards({ cardPhotos }: Scene3CardsProps) {
+export function Scene3Cards({ cardPhotos, forceExpand = false }: Scene3CardsProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   // 用 ref 存储已点开过的卡片索引，避免 Set 在频繁重渲染中读到旧值
@@ -474,11 +475,11 @@ export function Scene3Cards({ cardPhotos }: Scene3CardsProps) {
               photo={photo}
               index={i}
               total={cardPhotos.length}
-              isHovered={isHovered && expandedIndex === null}
+              isHovered={(isHovered && expandedIndex === null) || forceExpand}
               expandedX={expandedX}
               expandedY={expandedY}
               expandedRotate={expandedRotate}
-              captionBright={brightSetRef.current.has(i)}
+              captionBright={brightSetRef.current.has(i) || forceExpand}
               isMobile={isMobileDevice}
               onExpand={() => handleExpand(i)}
             />

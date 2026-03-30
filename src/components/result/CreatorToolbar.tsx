@@ -8,9 +8,11 @@ interface CreatorToolbarProps {
   shareUrl: string;
   sessionId: string | null;
   onNavigateAway?: () => void;
+  onTakeSnapshot?: () => void;
+  snapshotLoading?: boolean;
 }
 
-export function CreatorToolbar({ shareUrl, sessionId, onNavigateAway }: CreatorToolbarProps) {
+export function CreatorToolbar({ shareUrl, sessionId, onNavigateAway, onTakeSnapshot, snapshotLoading }: CreatorToolbarProps) {
   const router = useRouter();
   const [showToast, setShowToast] = useState(false);
 
@@ -83,27 +85,27 @@ export function CreatorToolbar({ shareUrl, sessionId, onNavigateAway }: CreatorT
         </motion.button>
       </motion.div>
 
-      {/* Toast 弹窗 */}
+      {/* Toast 弹窗 — 页面中央 */}
       <AnimatePresence>
         {showToast && (
           <motion.div
-            className="fixed top-8 left-1/2 z-[300]"
-            style={{ translateX: "-50%" }}
-            initial={{ opacity: 0, y: -12, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.95 }}
+            className="fixed left-1/2 z-[300]"
+            style={{ top: "50%", translateX: "-50%", translateY: "-50%" }}
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.92 }}
             transition={springGentle}
           >
             <div
-              className="flex flex-col items-center gap-1 px-6 py-4 rounded-2xl"
+              className="flex flex-col items-center gap-1 px-6 py-5 rounded-2xl"
               style={{
-                background: "rgba(18,22,42,0.92)",
-                border: "1px solid rgba(255,255,255,0.10)",
+                background: "rgba(18,22,42,0.96)",
+                border: "1px solid rgba(255,255,255,0.12)",
                 backdropFilter: "blur(20px)",
                 WebkitBackdropFilter: "blur(20px)",
-                boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+                boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
                 position: "relative",
-                minWidth: "220px",
+                minWidth: "240px",
               }}
             >
               {/* × 关闭按钮 */}
@@ -119,11 +121,32 @@ export function CreatorToolbar({ shareUrl, sessionId, onNavigateAway }: CreatorT
               <p className="text-white/90 text-sm font-light tracking-wider">
                 链接已复制
               </p>
-              <p className="text-white/35 text-xs tracking-wide">
+              <p className="text-white/45 text-xs tracking-wide">
                 快分享给 TA 看看吧 ✨
               </p>
-              <p style={{ fontSize: "0.6rem", color: "rgba(255,255,255,0.22)", letterSpacing: "0.06em", marginTop: "4px", textAlign: "center", lineHeight: 1.6 }}>
-                图片将在 15 天后从云端自动清除<br />请尽快分享，以免 TA 错过
+              <p style={{ fontSize: "0.65rem", color: "rgba(255,255,255,0.50)", letterSpacing: "0.06em", marginTop: "6px", textAlign: "center", lineHeight: 1.7 }}>
+                图片将在 15 天后从云端自动清除<br />
+                请尽快分享，以免 TA 错过<br />
+                <motion.button
+                  onClick={() => { setShowToast(false); onTakeSnapshot?.(); }}
+                  disabled={snapshotLoading}
+                  style={{
+                    color: snapshotLoading ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.70)",
+                    textDecoration: "underline",
+                    textUnderlineOffset: "3px",
+                    background: "none",
+                    border: "none",
+                    cursor: snapshotLoading ? "not-allowed" : "pointer",
+                    fontSize: "inherit",
+                    letterSpacing: "inherit",
+                    padding: 0,
+                    marginTop: "4px",
+                    display: "inline-block",
+                  }}
+                  whileTap={{ scale: 0.94 }}
+                >
+                  {snapshotLoading ? "截图中…" : "也可截长图保存页面"}
+                </motion.button>
               </p>
             </div>
           </motion.div>

@@ -29,6 +29,7 @@ export default function DemoPage() {
         sessionId={null}
         data={defaultDemoData}
         showHomeButton={true}
+        showSnapshotButton={true}
         endingCTA={cta}
       />
     </>

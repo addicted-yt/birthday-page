@@ -10,6 +10,7 @@ import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { useFirstInteraction } from "@/hooks/useFirstInteraction";
 import { springGentle } from "@/lib/animationPresets";
 import { getDefaultCardPlaceholders } from "@/lib/defaultCardPlaceholders";
+import { takeSnapshot, downloadSnapshot } from "@/lib/takeSnapshot";
 import { Scene0Curtain } from "./Scene0Curtain";
 import { Scene1Intro } from "./Scene1Intro";
 import { Scene2Title } from "./Scene2Title";
@@ -35,6 +36,7 @@ interface ResultPageShellProps {
   encodedName?: string | null;
   isCreator?: boolean;
   showHomeButton?: boolean;
+  showSnapshotButton?: boolean; // demo 页等非创建者场景显示截图按钮
   data?: BirthdayData;
   endingCTA?: (onNavigateAway: () => void) => ReactNode;
   onNavigateAway?: () => void;
@@ -47,6 +49,7 @@ export function ResultPageShell({
   encodedName,
   isCreator = false,
   showHomeButton = false,
+  showSnapshotButton = false,
   data: propData,
   endingCTA,
   onNavigateAway,
@@ -99,6 +102,10 @@ export function ResultPageShell({
   const [giftOpened, setGiftOpened] = useState(false);
   const [endingVisible, setEndingVisible] = useState(false);
   const [musicOn, setMusicOn] = useState(false);
+  // 截图相关状态
+  const [screenshotMode, setScreenshotMode] = useState(false);
+  const [screenshotDataUrl, setScreenshotDataUrl] = useState<string | null>(null);
+  const [screenshotLoading, setScreenshotLoading] = useState(false);
   // isCreator（预览页）跳过引导幕，其他情况（收件人/demo）显示
   const [showCurtain, setShowCurtain] = useState(!isCreator);
   // 引导幕消散动画完成后才渲染底层内容，确保第一幕动画全新开始
@@ -416,6 +423,30 @@ export function ResultPageShell({
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
+  // 截图处理：进入截图模式 → 等动画 → 截图 → 恢复
+  const handleTakeSnapshot = useCallback(async () => {
+    const container = scrollContainerRef.current;
+    if (!container || screenshotLoading) return;
+    setScreenshotLoading(true);
+    setScreenshotMode(true);
+    // 等待卡片展开动画和信件全文渲染完成
+    await new Promise((r) => setTimeout(r, 700));
+    try {
+      const { dataUrl } = await takeSnapshot(container);
+      const isDesktop = !(/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)) && !(/MicroMessenger/i.test(navigator.userAgent));
+      if (isDesktop) {
+        downloadSnapshot(dataUrl, "birthday.png");
+      } else {
+        setScreenshotDataUrl(dataUrl);
+      }
+    } catch {
+      // 截图失败静默处理
+    } finally {
+      setScreenshotMode(false);
+      setScreenshotLoading(false);
+    }
+  }, [screenshotLoading]);
+
   // 移动端：监听 scroll 容器滚动，蛋糕幕离屏后强制淡出 birthday song
   // 比子组件内部检测更可靠——容器自身的 scroll 事件在所有移动端浏览器中稳定触发
   useEffect(() => {
@@ -538,7 +569,7 @@ export function ResultPageShell({
 
       <Scene1Intro started={curtainDone} />
       <Scene2Title name={data.name} />
-      <Scene3Cards cardPhotos={cardPhotos} />
+      <Scene3Cards cardPhotos={cardPhotos} forceExpand={screenshotMode} />
 
       <Scene4_5Candle
         onEnter={handleCandleEnter}
@@ -563,6 +594,7 @@ export function ResultPageShell({
         hasPhotos={data.giftImages.length > 0}
         started={giftOpened}
         onLetterDone={data.giftImages.length > 0 ? handleLetterDone : undefined}
+        screenshotMode={screenshotMode}
       />
 
       {data.giftImages.length > 0 && (
@@ -574,27 +606,47 @@ export function ResultPageShell({
 
       <AnimatePresence>
         {endingVisible && (
-          <motion.button
-            className="fixed z-50 select-none"
+          <motion.div
+            className="fixed z-50 select-none flex items-center gap-4"
             style={{ bottom: "1.5rem", left: "50%", transform: "translateX(-50%)" }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ ...springGentle, delay: 1.2 }}
-            onClick={handleMusicToggle}
           >
-            <span
-              style={{
-                fontSize: "clamp(0.72rem, 1.4vw, 0.85rem)",
-                letterSpacing: "0.35em",
-                color: "rgba(255,255,255,0.40)",
-                display: "block",
-                transition: "color 0.3s ease",
-              }}
-            >
-              {musicOn ? "· 关闭音乐 ·" : "· 开启音乐 ·"}
-            </span>
-          </motion.button>
+            <motion.button onClick={handleMusicToggle}>
+              <span
+                style={{
+                  fontSize: "clamp(0.72rem, 1.4vw, 0.85rem)",
+                  letterSpacing: "0.35em",
+                  color: "rgba(255,255,255,0.40)",
+                  display: "block",
+                  transition: "color 0.3s ease",
+                }}
+              >
+                {musicOn ? "· 关闭音乐 ·" : "· 开启音乐 ·"}
+              </span>
+            </motion.button>
+            {showSnapshotButton && (
+              <motion.button
+                onClick={handleTakeSnapshot}
+                disabled={screenshotLoading}
+                whileTap={{ scale: 0.90 }}
+                style={{
+                  fontSize: "clamp(0.72rem, 1.4vw, 0.85rem)",
+                  letterSpacing: "0.35em",
+                  color: screenshotLoading ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.40)",
+                  background: "none",
+                  border: "none",
+                  cursor: screenshotLoading ? "not-allowed" : "pointer",
+                  padding: 0,
+                  transition: "color 0.3s ease",
+                }}
+              >
+                {screenshotLoading ? "· 截图中 ·" : "· 保存长图 ·"}
+              </motion.button>
+            )}
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -612,8 +664,98 @@ export function ResultPageShell({
       </AnimatePresence>
 
       {isCreator && shareUrl && (
-        <CreatorToolbar shareUrl={shareUrl} sessionId={sessionId} onNavigateAway={handleNavigateAway} />
+        <CreatorToolbar shareUrl={shareUrl} sessionId={sessionId} onNavigateAway={handleNavigateAway} onTakeSnapshot={handleTakeSnapshot} snapshotLoading={screenshotLoading} />
       )}
+
+      {/* 成品页（非创建者）：音乐按钮上方显示截图提示语 */}
+      <AnimatePresence>
+        {!isCreator && endingVisible && (
+          <motion.div
+            className="fixed z-50 select-none"
+            style={{ bottom: "3.8rem", left: "50%", transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" }}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ ...springGentle, delay: 1.6 }}
+          >
+            <span style={{ fontSize: "clamp(0.6rem, 1.2vw, 0.72rem)", letterSpacing: "0.12em", color: "rgba(255,255,255,0.28)" }}>
+              页面将于 15 天内自动删除，
+            </span>
+            <motion.button
+              onClick={handleTakeSnapshot}
+              disabled={screenshotLoading}
+              style={{
+                fontSize: "clamp(0.6rem, 1.2vw, 0.72rem)",
+                letterSpacing: "0.12em",
+                color: screenshotLoading ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.50)",
+                textDecoration: "underline",
+                textUnderlineOffset: "3px",
+                background: "none",
+                border: "none",
+                cursor: screenshotLoading ? "not-allowed" : "pointer",
+                padding: 0,
+              }}
+              whileTap={{ scale: 0.92 }}
+            >
+              {screenshotLoading ? "截图中…" : "保存长图"}
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 截图预览弹窗（移动端/微信：长按图片保存） */}
+      <AnimatePresence>
+        {screenshotDataUrl && (
+          <motion.div
+            className="fixed inset-0 z-[500] flex flex-col items-center justify-center"
+            style={{ background: "rgba(0,0,0,0.92)", padding: "1.5rem" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            onClick={() => setScreenshotDataUrl(null)}
+          >
+            <motion.div
+              style={{ maxWidth: "min(380px, 92vw)", width: "100%" }}
+              initial={{ scale: 0.92, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.92, opacity: 0 }}
+              transition={{ ...springGentle }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p style={{ fontSize: "0.75rem", letterSpacing: "0.2em", color: "rgba(255,255,255,0.45)", textAlign: "center", marginBottom: "0.8rem" }}>
+                长按图片保存到相册
+              </p>
+              <img
+                src={screenshotDataUrl}
+                alt="长图预览"
+                style={{ width: "100%", borderRadius: "12px", display: "block" }}
+                draggable={false}
+              />
+              <motion.button
+                style={{
+                  marginTop: "1rem",
+                  width: "100%",
+                  padding: "0.75rem",
+                  borderRadius: "2rem",
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
+                  color: "rgba(255,255,255,0.60)",
+                  fontSize: "0.75rem",
+                  letterSpacing: "0.25em",
+                  cursor: "pointer",
+                }}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => setScreenshotDataUrl(null)}
+              >
+                关闭
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

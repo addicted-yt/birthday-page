@@ -57,6 +57,7 @@ export async function GET(
     headers: {
       "Content-Type": contentType,
       "Cache-Control": "public, max-age=1209600", // 14天缓存
+      "Access-Control-Allow-Origin": "*", // 允许 html2canvas 截图时跨域读取图片
     },
   });
 }

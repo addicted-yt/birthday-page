@@ -10,6 +10,7 @@ interface Scene5LetterProps {
   hasPhotos?: boolean;
   started?: boolean;
   onLetterDone?: () => void;
+  screenshotMode?: boolean; // 截图模式：强制显示全部文字，不裁剪
 }
 
 export function Scene5Letter({
@@ -19,6 +20,7 @@ export function Scene5Letter({
   hasPhotos = false,
   started = false,
   onLetterDone,
+  screenshotMode = false,
 }: Scene5LetterProps) {
   const internalSectionRef = useRef<HTMLElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -240,17 +242,17 @@ export function Scene5Letter({
           ref={clipRef}
           style={{
             flex: 1,
-            overflow: "hidden",
+            overflow: screenshotMode ? "visible" : "hidden",
             position: "relative",
           }}
         >
           <div
             ref={scrollRef}
             style={{
-              position: "absolute",
-              inset: 0,
-              overflowY: letterDone ? "auto" : "hidden",
-              overflowX: "hidden",
+              position: screenshotMode ? "relative" : "absolute",
+              inset: screenshotMode ? undefined : 0,
+              overflowY: screenshotMode ? "visible" : (letterDone ? "auto" : "hidden"),
+              overflowX: screenshotMode ? "visible" : "hidden",
               scrollbarWidth: letterDone ? "thin" : "none",
               scrollbarColor: "rgba(255,255,255,0.12) transparent",
             }}
@@ -270,7 +272,7 @@ export function Scene5Letter({
                       : "center",
                 textAlign: letterAlign,
                 paddingBottom: "0.5rem",
-                transform: letterDone && !isCenteredMode.current ? "translateY(0)" : `translateY(${translateY}px)`,
+                transform: (screenshotMode || (letterDone && !isCenteredMode.current)) ? "translateY(0)" : `translateY(${translateY}px)`,
                 transition: letterDone ? "none" : "transform 0.85s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
                 willChange: "transform",
               }}
@@ -295,7 +297,7 @@ export function Scene5Letter({
                   >
                     {paragraph.map((line, lineIdx) => {
                       const currentRow = rowIndex++;
-                      const visible = currentRow < visibleCount;
+                      const visible = screenshotMode || currentRow < visibleCount;
                       return (
                         <p
                           key={`${paraIdx}-${lineIdx}`}

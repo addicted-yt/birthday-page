@@ -57,6 +57,9 @@ export function useAudioPlayer(src: string) {
     const audio = getAudio();
     if (!audio) return;
     unlockedRef.current = true;
+    // 先创建 promise 并立即赋值，确保 fadeIn 在任何异步间隙检查时都能感知到 unlock 正在进行
+    let resolveUnlock!: () => void;
+    unlockPromiseRef.current = new Promise<void>((resolve) => { resolveUnlock = resolve; });
     // play 再立即 pause，解锁 AudioContext；同时保证 currentTime 归零
     const prevMuted = audio.muted;
     const prevVolume = audio.volume;
@@ -64,15 +67,20 @@ export function useAudioPlayer(src: string) {
     audio.volume = 0;
     const p = audio.play();
     if (p) {
-      unlockPromiseRef.current = p.then(() => {
+      p.then(() => {
         audio.pause();
         audio.currentTime = 0;
         audio.muted = prevMuted;
         audio.volume = prevVolume;
         unlockPromiseRef.current = null;
+        resolveUnlock();
       }).catch(() => {
         unlockPromiseRef.current = null;
+        resolveUnlock();
       });
+    } else {
+      unlockPromiseRef.current = null;
+      resolveUnlock();
     }
   }, [getAudio]);
 
