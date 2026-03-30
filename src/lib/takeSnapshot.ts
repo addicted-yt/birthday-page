@@ -23,7 +23,7 @@ export interface SnapshotResult {
 
 export async function takeSnapshot(container: HTMLElement): Promise<SnapshotResult> {
   const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-  const scale = isMobile ? 2 : 2;
+  const scale = isMobile ? 1.5 : 2;
 
   // ── 1. crossOrigin：只设 attribute，不重置 src ──────────────────────
   container.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
@@ -33,7 +33,6 @@ export async function takeSnapshot(container: HTMLElement): Promise<SnapshotResu
   });
 
   // ── 1b. SVG data URL → PNG data URL（html2canvas 移动端不支持 SVG img）──
-  // 只转换 data:image/svg+xml，跳过已经是 png/jpeg 的 data URL 和网络图片
   await Promise.all(
     Array.from(container.querySelectorAll<HTMLImageElement>("img")).map((img) => {
       if (!img.src.startsWith("data:image/svg")) return Promise.resolve();
@@ -52,23 +51,23 @@ export async function takeSnapshot(container: HTMLElement): Promise<SnapshotResu
           img.src = cvs.toDataURL("image/png");
           resolve();
         };
-        tmpImg.onerror = () => {
-          img.src = svgSrc;
-          resolve();
-        };
+        tmpImg.onerror = () => { img.src = svgSrc; resolve(); };
         tmpImg.src = svgSrc;
       });
     })
   );
 
-  // ── 1c. 记录真实 DOM 中每个 emoji img 的渲染尺寸 ────────────────────
-  // onclone 里 img 尚未布局，必须在真实 DOM 里预先读取
+  // ── 1c. 预记录真实 DOM 中 emoji img 的渲染尺寸（onclone 里无法可靠读取）──
+  // Next.js Image 优化后 src 变成 /_next/image?url=%2Femoji%2F...，需要解码匹配
+  const isEmojiSrc = (src: string) => {
+    if (src.includes("/emoji/")) return true;
+    try { return new URL(src, location.href).searchParams.get("url")?.includes("/emoji/") ?? false; } catch { return false; }
+  };
   const emojiSizeMap = new Map<string, { w: number; h: number }>();
   container.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
     const src = img.getAttribute("src") || "";
-    if (src.includes("/emoji/")) {
+    if (isEmojiSrc(src)) {
       const rect = img.getBoundingClientRect();
-      // getBoundingClientRect 在 hidden 幕里可能为 0，降级用 attribute
       const w = rect.width > 0 ? rect.width : Number(img.getAttribute("width") || 48);
       const h = rect.height > 0 ? rect.height : Number(img.getAttribute("height") || 48);
       emojiSizeMap.set(src, { w, h });
@@ -77,17 +76,19 @@ export async function takeSnapshot(container: HTMLElement): Promise<SnapshotResu
 
   await new Promise((r) => setTimeout(r, 600));
 
-  // ── 2. 在真实 DOM 上找所有 fixed 元素，临时隐藏 ─────────────────────
-  // 用真实 DOM 的 getComputedStyle，100% 准确（Tailwind className 也能检测到）
+  // ── 2. 隐藏所有 fixed 元素，但跳过 CosmicBackground canvas ──────────
+  // CosmicBackground 是 fixed canvas，需要排除，不然背景会消失
   const hiddenEls: Array<{ el: HTMLElement; prev: string }> = [];
   document.querySelectorAll<HTMLElement>("*").forEach((el) => {
+    if (el.tagName === "CANVAS") return; // 保留 canvas（CosmicBackground）
     if (window.getComputedStyle(el).position === "fixed") {
       hiddenEls.push({ el, prev: el.style.display });
       el.style.display = "none";
     }
   });
 
-  // ── 3. 临时展开容器，读取真实总高度，再恢复 ─────────────────────────
+  // ── 3. 保存 scrollTop，展开容器读总高度，再完整恢复 ─────────────────
+  const prevScrollTop = container.scrollTop;
   const prevH = container.style.height;
   const prevOY = container.style.overflowY;
   const prevSnap = container.style.scrollSnapType;
@@ -100,15 +101,14 @@ export async function takeSnapshot(container: HTMLElement): Promise<SnapshotResu
   container.style.height = prevH;
   container.style.overflowY = prevOY;
   container.style.scrollSnapType = prevSnap;
+  // 恢复 scrollTop，防止移动端卡在第一幕
+  container.scrollTop = prevScrollTop;
 
   try {
     const canvas = await html2canvas(container, {
       useCORS: true,
       allowTaint: false,
       scale,
-      // width/height 显式传入，确保 html2canvas 截取全部内容而不只是可见区域
-      width: totalWidth,
-      height: totalHeight,
       backgroundColor: "#080d1a",
       logging: false,
       onclone: (clonedDoc, clonedContainer) => {
@@ -119,10 +119,10 @@ export async function takeSnapshot(container: HTMLElement): Promise<SnapshotResu
         clonedContainer.style.overflowX = "visible";
         clonedContainer.style.scrollSnapType = "none";
         clonedContainer.style.position = "relative";
-        // body/html 背景也设置，确保 html2canvas 底色正确
+        // body/html 底色
         clonedDoc.body.style.background = "#080d1a";
         clonedDoc.documentElement.style.background = "#080d1a";
-        // 星空渐变背景（直接设在容器上，覆盖 class 里的纯色）
+        // 星空渐变背景
         clonedContainer.style.background = [
           `radial-gradient(ellipse ${Math.round(totalWidth*0.6)}px ${Math.round(totalHeight*0.18)}px at ${Math.round(totalWidth*0.22)}px ${Math.round(totalHeight*0.05)}px, rgba(70,95,210,0.18) 0%, transparent 100%)`,
           `radial-gradient(ellipse ${Math.round(totalWidth*0.5)}px ${Math.round(totalHeight*0.15)}px at ${Math.round(totalWidth*0.80)}px ${Math.round(totalHeight*0.30)}px, rgba(120,70,185,0.14) 0%, transparent 100%)`,
@@ -130,6 +130,8 @@ export async function takeSnapshot(container: HTMLElement): Promise<SnapshotResu
           `radial-gradient(ellipse ${Math.round(totalWidth*0.4)}px ${Math.round(totalHeight*0.10)}px at ${Math.round(totalWidth*0.85)}px ${Math.round(totalHeight*0.85)}px, rgba(50,100,200,0.08) 0%, transparent 100%)`,
           "linear-gradient(180deg, #0a1224 0%, #080d1a 30%, #060a18 100%)",
         ].join(",");
+        // 移除克隆文档里的 canvas（CosmicBackground，clone 里是空白 canvas）
+        clonedDoc.querySelectorAll<HTMLCanvasElement>("canvas").forEach((cv) => cv.remove());
 
         // ── B. 展开所有 section ─────────────────────────────────────────
         clonedContainer.querySelectorAll<HTMLElement>("section").forEach((s) => {
@@ -151,10 +153,9 @@ export async function takeSnapshot(container: HTMLElement): Promise<SnapshotResu
         });
 
         // ── D. 修复 EmojiImage（/emoji/ 路径）尺寸 ──────────────────────
-        // 用步骤 1c 预记录的真实渲染尺寸，避免 clone 里尺寸无法确定的问题
         clonedContainer.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
           const src = img.getAttribute("src") || img.src || "";
-          if (src.includes("/emoji/")) {
+          if (isEmojiSrc(src)) {
             const recorded = emojiSizeMap.get(img.getAttribute("src") || "");
             const w = recorded ? recorded.w : Number(img.getAttribute("width") || 48);
             const h = recorded ? recorded.h : Number(img.getAttribute("height") || 48);
@@ -170,7 +171,6 @@ export async function takeSnapshot(container: HTMLElement): Promise<SnapshotResu
             img.style.setProperty("display", "block", "important");
             img.style.setProperty("flex-shrink", "0", "important");
             img.style.removeProperty("position");
-            // 修复父 SPAN（Next.js Image wrapper）
             const parent = img.parentElement;
             if (parent && parent.tagName === "SPAN") {
               parent.style.setProperty("width", sw, "important");
@@ -220,8 +220,6 @@ export async function takeSnapshot(container: HTMLElement): Promise<SnapshotResu
         starsEl.style.pointerEvents = "none";
         starsEl.style.boxShadow = shadows.join(",");
         clonedContainer.insertBefore(starsEl, clonedContainer.firstChild);
-        // 移除克隆文档中的 canvas 元素（CosmicBackground 动画 canvas）
-        clonedDoc.querySelectorAll<HTMLCanvasElement>("canvas").forEach((cv) => cv.remove());
       },
     });
 
