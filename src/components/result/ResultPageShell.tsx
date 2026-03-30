@@ -671,7 +671,7 @@ export function ResultPageShell({
 
       {/* 成品页（非创建者）：音乐按钮上方显示截图提示语 */}
       <AnimatePresence>
-        {!isCreator && endingVisible && (
+        {!isCreator && !showSnapshotButton && endingVisible && (
           <motion.div
             className="fixed z-50 select-none"
             style={{
