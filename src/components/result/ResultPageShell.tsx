@@ -773,26 +773,20 @@ export function ResultPageShell({
                 draggable={false}
               />
 
-              {/* 下载按钮 */}
-              <motion.button
-                onClick={() => downloadSnapshot(screenshotDataUrl, "birthday.png")}
-                style={{
-                  marginTop: "0.9rem",
-                  width: "100%",
-                  padding: "0.7rem",
-                  borderRadius: "2rem",
-                  background: "rgba(255,255,255,0.10)",
-                  border: "1px solid rgba(255,255,255,0.18)",
-                  color: "rgba(255,255,255,0.75)",
-                  fontSize: "0.78rem",
-                  letterSpacing: "0.22em",
-                  cursor: "pointer",
-                }}
-                whileHover={{ background: "rgba(255,255,255,0.15)" }}
-                whileTap={{ scale: 0.96 }}
-              >
-                下载长图
-              </motion.button>
+              {/* 引导提示：点图进入全屏后长按保存 */}
+              <p style={{
+                marginTop: "0.75rem",
+                textAlign: "center",
+                fontSize: "0.72rem",
+                letterSpacing: "0.15em",
+                color: "rgba(255,255,255,0.38)",
+                lineHeight: 1.6,
+              }}>
+                点击图片全屏预览<br />
+                {/MicroMessenger/i.test(navigator.userAgent) && !/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+                  ? "右键图片即可保存"
+                  : "长按图片可保存到相册"}
+              </p>
             </motion.div>
           </motion.div>
         )}
@@ -810,7 +804,27 @@ export function ResultPageShell({
             transition={{ duration: 0.2 }}
             onClick={() => setScreenshotFullscreen(false)}
           >
-            {/* 图片容器：相对定位，提示文字绝对浮在图片顶部 */}
+            {/* 提示固定在视口顶部，不随图片滚动消失 */}
+            <div style={{
+              position: "fixed",
+              top: 0, left: 0, right: 0,
+              padding: "1rem 0 2.5rem",
+              background: "linear-gradient(to bottom, rgba(0,0,0,0.65) 0%, transparent 100%)",
+              textAlign: "center",
+              pointerEvents: "none",
+              zIndex: 1,
+            }}>
+              <span style={{
+                fontSize: "0.68rem",
+                letterSpacing: "0.2em",
+                color: "rgba(255,255,255,0.80)",
+              }}>
+                {/MicroMessenger/i.test(navigator.userAgent) && !/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+                  ? "右键保存 · 单点关闭"
+                  : "长按保存 · 单点关闭"}
+              </span>
+            </div>
+            {/* 图片容器 */}
             <div style={{ position: "relative", width: "100%" }}>
               <img
                 src={screenshotDataUrl}
@@ -818,25 +832,6 @@ export function ResultPageShell({
                 style={{ width: "100%", display: "block" }}
                 draggable={false}
               />
-              {/* 提示浮层：绝对定位在图片顶部，渐变遮罩 */}
-              <div style={{
-                position: "absolute",
-                top: 0, left: 0, right: 0,
-                padding: "1.2rem 0 2rem",
-                background: "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 100%)",
-                textAlign: "center",
-                pointerEvents: "none",
-              }}>
-                <span style={{
-                  fontSize: "0.68rem",
-                  letterSpacing: "0.2em",
-                  color: "rgba(255,255,255,0.75)",
-                }}>
-                  {/MicroMessenger/i.test(navigator.userAgent) && !/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
-                    ? "右键保存 · 单点关闭"
-                    : "长按保存 · 单点关闭"}
-                </span>
-              </div>
             </div>
             <div style={{ height: "2rem" }} />
           </motion.div>
