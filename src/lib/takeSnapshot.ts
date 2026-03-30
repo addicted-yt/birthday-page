@@ -23,136 +23,73 @@ export function isDesktopWechat(): boolean {
   return isWechat && !isMobile;
 }
 
-// 给所有非 data: 的 img 元素加 crossOrigin，避免 R2 图片污染 canvas
-function patchCrossOrigin(container: HTMLElement): () => void {
-  const patched: Array<{ el: HTMLImageElement; prev: string | null }> = [];
-  container.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
-    if (img.src.startsWith("data:")) return; // base64 跳过，重置会导致移动端图片消失
-    if (!img.crossOrigin) {
-      patched.push({ el: img, prev: img.getAttribute("crossorigin") });
-      img.crossOrigin = "anonymous";
-      const src = img.src;
-      img.src = "";
-      img.src = src;
-    }
-  });
-  return () => {
-    patched.forEach(({ el, prev }) => {
-      if (prev === null) el.removeAttribute("crossorigin");
-      else el.crossOrigin = prev;
-    });
-  };
-}
-
-// 在 clone document 里绘制静态星空背景，替代 canvas 动画
-function renderStaticStarBackground(clonedDoc: Document, width: number, totalHeight: number): void {
-  const canvases = clonedDoc.querySelectorAll<HTMLCanvasElement>("canvas");
-  canvases.forEach((canvas) => {
-    const div = clonedDoc.createElement("div");
-    // 保持 fixed 定位，让星空铺满每一幕
-    div.style.position = "fixed";
-    div.style.inset = "0";
-    div.style.zIndex = "0";
-    div.style.pointerEvents = "none";
-    div.style.background = [
-      "radial-gradient(ellipse at 22% 28%, rgba(70,95,210,0.10) 0%, transparent 50%)",
-      "radial-gradient(ellipse at 80% 62%, rgba(120,70,185,0.09) 0%, transparent 45%)",
-      "radial-gradient(ellipse at 55% 75%, rgba(40,130,195,0.07) 0%, transparent 40%)",
-      "radial-gradient(ellipse at 85% 18%, rgba(50,100,200,0.06) 0%, transparent 38%)",
-      "radial-gradient(ellipse at 50% 30%, rgba(18,26,65,1) 0%, rgba(10,16,36,1) 45%, rgba(6,10,24,1) 100%)",
-    ].join(",");
-
-    // 用 box-shadow 模拟星星，分布在整张长图高度上
-    const rng = (seed: number) => { const x = Math.sin(seed) * 10000; return x - Math.floor(x); };
-    const shadows: string[] = [];
-    for (let i = 0; i < 280; i++) {
-      const sx = Math.floor(rng(i * 3 + 1) * width);
-      const sy = Math.floor(rng(i * 3 + 2) * totalHeight);
-      const op = (rng(i * 3 + 3) * 0.55 + 0.12).toFixed(2);
-      const sz = rng(i * 7) > 0.82 ? 2 : 1;
-      shadows.push(`${sx}px ${sy}px 0 ${sz}px rgba(220,230,255,${op})`);
-    }
-    const starEl = clonedDoc.createElement("div");
-    starEl.style.position = "absolute";
-    starEl.style.top = "0";
-    starEl.style.left = "0";
-    starEl.style.width = `${width}px`;
-    starEl.style.height = `${totalHeight}px`;
-    starEl.style.boxShadow = shadows.join(",");
-    div.appendChild(starEl);
-    canvas.replaceWith(div);
-  });
-}
-
 export interface SnapshotResult {
   dataUrl: string;
 }
 
 export async function takeSnapshot(container: HTMLElement): Promise<SnapshotResult> {
-  // 1. 先设置 crossOrigin（跳过 base64），等图片重新加载
-  const restoreCrossOrigin = patchCrossOrigin(container);
-  await new Promise((r) => setTimeout(r, 500));
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  // 移动端 scale=1 避免内存溢出，桌面端 1.5 提升清晰度
+  const scale = isMobile ? 1 : 1.5;
+
+  // 等待所有图片加载完成（包括 crossOrigin 变更后的重载）
+  // 先给所有非 data: 图片设置 crossOrigin attribute（不重置 src，避免闪烁）
+  container.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
+    if (!img.src.startsWith("data:") && !img.crossOrigin) {
+      img.setAttribute("crossorigin", "anonymous");
+    }
+  });
+  // 等待图片自然加载完
+  await new Promise((r) => setTimeout(r, 600));
 
   const totalWidth = container.offsetWidth;
 
-  // 2. 在截图前先展开容器读取真实总高，再恢复，把高度传给 onclone
-  const prevHeight = container.style.height;
-  const prevOverflow = container.style.overflowY;
-  const prevSnap = container.style.scrollSnapType;
-  container.style.height = "auto";
-  container.style.overflowY = "visible";
-  container.style.scrollSnapType = "none";
-  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-  const totalHeight = container.scrollHeight;
-  container.style.height = prevHeight;
-  container.style.overflowY = prevOverflow;
-  container.style.scrollSnapType = prevSnap;
-
-  // 3. 用 onclone 在克隆副本里处理所有截图问题，真实 DOM 不受影响
+  // 在 onclone 里完成所有 DOM 改造，真实 DOM 完全不动
   const canvas = await html2canvas(container, {
     useCORS: true,
     allowTaint: false,
-    scale: 1,
+    scale,
     backgroundColor: "#080d1a",
     logging: false,
     onclone: (clonedDoc, clonedContainer) => {
-      // 展开 scroll-snap 容器
+      // ── 1. 展开 scroll-snap 容器 ──────────────────────────────────────
       clonedContainer.style.height = "auto";
+      clonedContainer.style.minHeight = "auto";
       clonedContainer.style.overflowY = "visible";
+      clonedContainer.style.overflowX = "visible";
       clonedContainer.style.scrollSnapType = "none";
       clonedContainer.style.position = "relative";
 
-      // 用 clone document 的 getComputedStyle（不能用 window 的）
-      const clonedView = clonedDoc.defaultView ?? window;
+      // ── 2. 展开所有 section（每幕 height:100dvh → auto） ─────────────
+      clonedContainer.querySelectorAll<HTMLElement>("section").forEach((section) => {
+        const h = section.style.height || "";
+        if (h.includes("dvh") || h.includes("vh") || h === "auto") {
+          section.style.minHeight = h.replace("dvh", "vh") || "100vh";
+          section.style.height = "auto";
+        }
+      });
 
-      // 替换 backdrop-filter，同时保护卡片图片：
-      // 只对没有 img 子元素的容器替换背景，避免把卡片图片盖住
+      // ── 3. 替换 backdrop-filter（html2canvas 不支持）──────────────────
+      // 只对没有 img 子元素且没有 background-image 的元素补纯色背景
       clonedContainer.querySelectorAll<HTMLElement>("*").forEach((el) => {
-        const computed = clonedView.getComputedStyle(el);
-        const bf =
-          computed.backdropFilter ||
-          (computed as unknown as Record<string, string>)["webkitBackdropFilter"] ||
-          "";
+        const s = el.style;
+        const bf = s.backdropFilter || (s as unknown as Record<string,string>).webkitBackdropFilter || "";
+        // 读 inline style 即可（clone 保留了原始 inline style）
         if (bf && bf !== "none") {
-          el.style.backdropFilter = "none";
-          (el.style as unknown as Record<string, string>)["webkitBackdropFilter"] = "none";
-          // 只在没有背景图/图片子元素时才补纯色背景
-          const hasImgChild = el.querySelector("img") !== null;
-          const bgImage = computed.backgroundImage;
-          const hasBgImage = bgImage && bgImage !== "none";
-          if (!hasImgChild && !hasBgImage) {
-            el.style.background = "#0d1020";
+          s.backdropFilter = "none";
+          (s as unknown as Record<string,string>).webkitBackdropFilter = "none";
+          const hasImg = el.querySelector("img") !== null;
+          if (!hasImg) {
+            s.background = "#0d1020";
           }
         }
       });
 
-      // 修复 Next.js Image（EmojiImage）在 clone 里尺寸失控：
-      // 找到带 width/height attribute 且尺寸较小的 img（emoji 类），强制约束
+      // ── 4. 修复 Next.js Image / EmojiImage 尺寸失控 ──────────────────
       clonedContainer.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
         const w = img.getAttribute("width");
         const h = img.getAttribute("height");
         if (w && h && Number(w) <= 120 && Number(h) <= 120) {
-          // emoji/小图标类，强制限制尺寸
           img.style.width = `${w}px`;
           img.style.height = `${h}px`;
           img.style.maxWidth = `${w}px`;
@@ -160,9 +97,9 @@ export async function takeSnapshot(container: HTMLElement): Promise<SnapshotResu
           img.style.objectFit = "contain";
           img.style.display = "inline-block";
           img.style.flexShrink = "0";
-          // 同时约束父级（Next.js Image 的 span wrapper）
+          // 约束 Next.js Image 的 span wrapper
           const parent = img.parentElement;
-          if (parent && parent.tagName !== "A" && parent !== clonedContainer) {
+          if (parent && parent.tagName === "SPAN") {
             parent.style.width = `${w}px`;
             parent.style.height = `${h}px`;
             parent.style.maxWidth = `${w}px`;
@@ -173,20 +110,61 @@ export async function takeSnapshot(container: HTMLElement): Promise<SnapshotResu
         }
       });
 
-      // 隐藏所有 fixed 定位的 UI 覆盖层（按钮、弹窗等）
+      // ── 5. 隐藏 fixed UI 覆盖层（按钮、弹窗等）─────────────────────
+      // 用 inline style 判断，避免跨 document getComputedStyle 问题
       clonedContainer.querySelectorAll<HTMLElement>("*").forEach((el) => {
-        const pos = clonedView.getComputedStyle(el).position;
-        if (pos === "fixed") {
+        if (el.style.position === "fixed") {
           el.style.display = "none";
         }
       });
+      // 额外处理 Framer Motion 通过 style prop 设置 position:fixed 的元素
+      // （这些在 clone 里会保留在 style 属性里）
+      clonedDoc.querySelectorAll<HTMLElement>("[style*='position: fixed'],[style*='position:fixed']").forEach((el) => {
+        el.style.display = "none";
+      });
 
-      // 绘制静态星空背景替代 canvas 动画
-      renderStaticStarBackground(clonedDoc, totalWidth, totalHeight);
+      // ── 6. 替换 canvas（CosmicBackground）为静态星空背景 ─────────────
+      // 用 absolute 定位铺满整个 clone 容器，不用 fixed（fixed 只覆盖视口）
+      clonedDoc.querySelectorAll<HTMLCanvasElement>("canvas").forEach((cv) => {
+        const totalHeight = clonedContainer.scrollHeight || 8000;
+        const wrapper = clonedDoc.createElement("div");
+        wrapper.style.position = "absolute";
+        wrapper.style.top = "0";
+        wrapper.style.left = "0";
+        wrapper.style.width = `${totalWidth}px`;
+        wrapper.style.height = `${totalHeight}px`;
+        wrapper.style.zIndex = "0";
+        wrapper.style.pointerEvents = "none";
+        // 深色星云渐变（平铺整张长图）
+        wrapper.style.background = [
+          `radial-gradient(ellipse ${totalWidth * 0.6}px ${totalHeight * 0.3}px at ${totalWidth * 0.22}px ${totalHeight * 0.08}px, rgba(70,95,210,0.12) 0%, transparent 100%)`,
+          `radial-gradient(ellipse ${totalWidth * 0.5}px ${totalHeight * 0.25}px at ${totalWidth * 0.80}px ${totalHeight * 0.35}px, rgba(120,70,185,0.10) 0%, transparent 100%)`,
+          `radial-gradient(ellipse ${totalWidth * 0.45}px ${totalHeight * 0.22}px at ${totalWidth * 0.55}px ${totalHeight * 0.65}px, rgba(40,130,195,0.08) 0%, transparent 100%)`,
+          `radial-gradient(ellipse ${totalWidth * 0.4}px ${totalHeight * 0.20}px at ${totalWidth * 0.85}px ${totalHeight * 0.88}px, rgba(50,100,200,0.07) 0%, transparent 100%)`,
+          "linear-gradient(180deg, #0a1024 0%, #080d1a 40%, #060a18 100%)",
+        ].join(",");
+        // 用 box-shadow 模拟星星，覆盖整张长图
+        const rng = (seed: number) => { const x = Math.sin(seed + 1) * 10000; return x - Math.floor(x); };
+        const shadows: string[] = [];
+        for (let i = 0; i < 300; i++) {
+          const sx = Math.floor(rng(i * 3 + 1) * totalWidth);
+          const sy = Math.floor(rng(i * 3 + 2) * totalHeight);
+          const op = (rng(i * 3 + 3) * 0.55 + 0.12).toFixed(2);
+          const sz = rng(i * 7) > 0.82 ? 2 : 1;
+          shadows.push(`${sx}px ${sy}px 0 ${sz}px rgba(220,230,255,${op})`);
+        }
+        const starEl = clonedDoc.createElement("div");
+        starEl.style.position = "absolute";
+        starEl.style.top = "0";
+        starEl.style.left = "0";
+        starEl.style.width = "1px";
+        starEl.style.height = "1px";
+        starEl.style.boxShadow = shadows.join(",");
+        wrapper.appendChild(starEl);
+        cv.replaceWith(wrapper);
+      });
     },
   });
-
-  restoreCrossOrigin();
 
   const dataUrl = canvas.toDataURL("image/png");
   return { dataUrl };
