@@ -57,14 +57,14 @@ function patchScrollContainer(container: HTMLElement): () => void {
   const prevHeight = container.style.height;
   const prevOverflowY = container.style.overflowY;
   const prevScrollSnapType = container.style.scrollSnapType;
-  const totalHeight = container.scrollHeight;
 
-  container.style.height = `${totalHeight}px`;
+  // 必须先解除 overflow 限制，再读 scrollHeight，否则 scrollHeight === clientHeight
   container.style.overflowY = "visible";
+  container.style.height = "auto";
   container.style.scrollSnapType = "none";
 
-  // 同时展开所有 scroll-snap-start 子幕（它们 height: 100dvh，不需要改，但需要确保不被父级裁切）
-  // 父级已 visible，子幕各自高度保持不变，串联即可
+  // 展开子幕：scroll-snap-start 的 height: 100dvh 是 CSS class 设置的，
+  // inline style 覆盖优先级更高，不需要额外处理
 
   return () => {
     container.style.height = prevHeight;
@@ -84,11 +84,12 @@ export async function takeSnapshot(container: HTMLElement): Promise<SnapshotResu
 
   // 展开 scroll-snap 容器，让所有幕都进入截图范围
   const restoreScroll = patchScrollContainer(container);
-  // 等一帧确保样式生效
+  // 等两帧确保 overflow:visible + height:auto 样式生效，scrollHeight 才准确
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
   const restoreBackdrop = patchBackdropFilter(container);
 
+  // 展开后才读 scrollHeight，此时值才是全部幕的真实总高
   const totalHeight = container.scrollHeight;
 
   try {

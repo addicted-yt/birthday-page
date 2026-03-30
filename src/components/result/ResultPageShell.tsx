@@ -674,14 +674,25 @@ export function ResultPageShell({
         {!isCreator && endingVisible && (
           <motion.div
             className="fixed z-50 select-none"
-            style={{ bottom: "3.8rem", left: "50%", transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" }}
+            style={{
+              bottom: "3.8rem",
+              left: 0,
+              right: 0,
+              display: "flex",
+              flexWrap: "wrap",
+              justifyContent: "center",
+              alignItems: "baseline",
+              gap: "0 0.2em",
+              padding: "0 1rem",
+              textAlign: "center",
+            }}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             transition={{ ...springGentle, delay: 1.6 }}
           >
             <span style={{ fontSize: "clamp(0.6rem, 1.2vw, 0.72rem)", letterSpacing: "0.12em", color: "rgba(255,255,255,0.28)" }}>
-              因数据库限制，页面数据将于 15 天内自动删除，可以{" "}
+              因云端数据库容量限制，页面数据将于 15 天内自动删除，可以
             </span>
             <motion.button
               onClick={handleTakeSnapshot}
@@ -702,7 +713,7 @@ export function ResultPageShell({
               {screenshotLoading ? "截图中…" : "保存长图"}
             </motion.button>
             <span style={{ fontSize: "clamp(0.6rem, 1.2vw, 0.72rem)", letterSpacing: "0.12em", color: "rgba(255,255,255,0.28)" }}>
-              {" "}留念
+              留念
             </span>
           </motion.div>
         )}
@@ -787,36 +798,46 @@ export function ResultPageShell({
         )}
       </AnimatePresence>
 
-      {/* 全屏预览（移动端点缩略图后进入，显示长按提示） */}
+      {/* 全屏预览（移动端点缩略图后进入，提示浮在图片上方，单点任意处关闭） */}
       <AnimatePresence>
         {screenshotDataUrl && screenshotFullscreen && (
           <motion.div
             className="fixed inset-0 z-[600] overflow-y-auto"
-            style={{ background: "rgba(0,0,0,0.96)" }}
+            style={{ background: "rgba(0,0,0,0.96)", cursor: "zoom-out" }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={() => setScreenshotFullscreen(false)}
           >
-            {/* 长按下载·单点关闭 提示 */}
-            <p style={{
-              textAlign: "center",
-              fontSize: "0.68rem",
-              letterSpacing: "0.2em",
-              color: "rgba(255,255,255,0.35)",
-              padding: "1rem 0 0.6rem",
-              pointerEvents: "none",
-            }}>
-              长按下载 · 单点关闭
-            </p>
-            <img
-              src={screenshotDataUrl}
-              alt="长图"
-              style={{ width: "100%", display: "block" }}
-              draggable={false}
-              onClick={(e) => e.stopPropagation()}
-            />
+            {/* 图片容器：相对定位，提示文字绝对浮在图片顶部 */}
+            <div style={{ position: "relative", width: "100%" }}>
+              <img
+                src={screenshotDataUrl}
+                alt="长图"
+                style={{ width: "100%", display: "block" }}
+                draggable={false}
+              />
+              {/* 提示浮层：绝对定位在图片顶部，渐变遮罩 */}
+              <div style={{
+                position: "absolute",
+                top: 0, left: 0, right: 0,
+                padding: "1.2rem 0 2rem",
+                background: "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 100%)",
+                textAlign: "center",
+                pointerEvents: "none",
+              }}>
+                <span style={{
+                  fontSize: "0.68rem",
+                  letterSpacing: "0.2em",
+                  color: "rgba(255,255,255,0.75)",
+                }}>
+                  {/MicroMessenger/i.test(navigator.userAgent) && !/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+                    ? "右键保存 · 单点关闭"
+                    : "长按保存 · 单点关闭"}
+                </span>
+              </div>
+            </div>
             <div style={{ height: "2rem" }} />
           </motion.div>
         )}
