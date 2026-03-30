@@ -212,7 +212,7 @@ export function Scene5Letter({
         if (sectionRef) sectionRef.current = node;
       }}
       className="scroll-snap-start"
-      style={{ zIndex: 10, height: "100dvh", display: "flex", alignItems: "center", justifyContent: "center" }}
+      style={{ zIndex: 10, height: screenshotMode ? "auto" : "100dvh", minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center" }}
     >
       <div
         className="flex flex-col w-full"
