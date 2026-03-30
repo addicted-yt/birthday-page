@@ -6,7 +6,7 @@
 import html2canvas from "html2canvas";
 
 // 判断是否是桌面普通浏览器（非微信 / 非移动端）
-function isDesktopBrowser(): boolean {
+export function isDesktopBrowser(): boolean {
   if (typeof window === "undefined") return false;
   const ua = navigator.userAgent;
   const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
@@ -23,7 +23,6 @@ function patchBackdropFilter(container: HTMLElement): () => void {
     const bf = style.backdropFilter || (style as unknown as Record<string, string>)["webkitBackdropFilter"] || "";
     if (bf && bf !== "none") {
       patched.push({ el, prev: el.style.background });
-      // 用页面背景色相近的深色替代毛玻璃
       el.style.background = "#0d1020";
     }
   });
@@ -53,16 +52,44 @@ function patchCrossOrigin(container: HTMLElement): () => void {
   };
 }
 
+// 临时展开 scroll-snap 容器，让 html2canvas 能截到全部幕
+function patchScrollContainer(container: HTMLElement): () => void {
+  const prevHeight = container.style.height;
+  const prevOverflowY = container.style.overflowY;
+  const prevScrollSnapType = container.style.scrollSnapType;
+  const totalHeight = container.scrollHeight;
+
+  container.style.height = `${totalHeight}px`;
+  container.style.overflowY = "visible";
+  container.style.scrollSnapType = "none";
+
+  // 同时展开所有 scroll-snap-start 子幕（它们 height: 100dvh，不需要改，但需要确保不被父级裁切）
+  // 父级已 visible，子幕各自高度保持不变，串联即可
+
+  return () => {
+    container.style.height = prevHeight;
+    container.style.overflowY = prevOverflowY;
+    container.style.scrollSnapType = prevScrollSnapType;
+  };
+}
+
 export interface SnapshotResult {
   dataUrl: string;
 }
 
 export async function takeSnapshot(container: HTMLElement): Promise<SnapshotResult> {
-  // 等图片重新加载（crossOrigin 设置后需要重新加载）
+  // crossOrigin 需先于展开容器设置，等图片重新加载
   const restoreCrossOrigin = patchCrossOrigin(container);
   await new Promise((r) => setTimeout(r, 400));
 
+  // 展开 scroll-snap 容器，让所有幕都进入截图范围
+  const restoreScroll = patchScrollContainer(container);
+  // 等一帧确保样式生效
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
   const restoreBackdrop = patchBackdropFilter(container);
+
+  const totalHeight = container.scrollHeight;
 
   try {
     const canvas = await html2canvas(container, {
@@ -71,16 +98,17 @@ export async function takeSnapshot(container: HTMLElement): Promise<SnapshotResu
       scale: 1, // 固定 dpr=1，避免移动端内存溢出
       backgroundColor: "#080d1a",
       logging: false,
-      // 截取完整高度（所有幕）
-      height: container.scrollHeight,
-      windowHeight: container.scrollHeight,
+      height: totalHeight,
+      windowHeight: totalHeight,
       y: 0,
+      x: 0,
     });
 
     const dataUrl = canvas.toDataURL("image/png");
     return { dataUrl };
   } finally {
     restoreBackdrop();
+    restoreScroll();
     restoreCrossOrigin();
   }
 }

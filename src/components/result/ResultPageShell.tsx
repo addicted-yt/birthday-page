@@ -10,7 +10,7 @@ import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { useFirstInteraction } from "@/hooks/useFirstInteraction";
 import { springGentle } from "@/lib/animationPresets";
 import { getDefaultCardPlaceholders } from "@/lib/defaultCardPlaceholders";
-import { takeSnapshot, downloadSnapshot } from "@/lib/takeSnapshot";
+import { takeSnapshot, downloadSnapshot, isDesktopBrowser } from "@/lib/takeSnapshot";
 import { Scene0Curtain } from "./Scene0Curtain";
 import { Scene1Intro } from "./Scene1Intro";
 import { Scene2Title } from "./Scene2Title";
@@ -106,6 +106,8 @@ export function ResultPageShell({
   const [screenshotMode, setScreenshotMode] = useState(false);
   const [screenshotDataUrl, setScreenshotDataUrl] = useState<string | null>(null);
   const [screenshotLoading, setScreenshotLoading] = useState(false);
+  // 截图预览弹窗：false=毛玻璃弹窗, true=全屏预览
+  const [screenshotFullscreen, setScreenshotFullscreen] = useState(false);
   // isCreator（预览页）跳过引导幕，其他情况（收件人/demo）显示
   const [showCurtain, setShowCurtain] = useState(!isCreator);
   // 引导幕消散动画完成后才渲染底层内容，确保第一幕动画全新开始
@@ -433,10 +435,10 @@ export function ResultPageShell({
     await new Promise((r) => setTimeout(r, 700));
     try {
       const { dataUrl } = await takeSnapshot(container);
-      const isDesktop = !(/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)) && !(/MicroMessenger/i.test(navigator.userAgent));
-      if (isDesktop) {
+      if (isDesktopBrowser()) {
         downloadSnapshot(dataUrl, "birthday.png");
       } else {
+        setScreenshotFullscreen(false);
         setScreenshotDataUrl(dataUrl);
       }
     } catch {
@@ -679,7 +681,7 @@ export function ResultPageShell({
             transition={{ ...springGentle, delay: 1.6 }}
           >
             <span style={{ fontSize: "clamp(0.6rem, 1.2vw, 0.72rem)", letterSpacing: "0.12em", color: "rgba(255,255,255,0.28)" }}>
-              页面将于 15 天内自动删除，
+              因数据库限制，页面数据将于 15 天内自动删除，可以{" "}
             </span>
             <motion.button
               onClick={handleTakeSnapshot}
@@ -699,60 +701,123 @@ export function ResultPageShell({
             >
               {screenshotLoading ? "截图中…" : "保存长图"}
             </motion.button>
+            <span style={{ fontSize: "clamp(0.6rem, 1.2vw, 0.72rem)", letterSpacing: "0.12em", color: "rgba(255,255,255,0.28)" }}>
+              {" "}留念
+            </span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* 截图预览弹窗（移动端/微信：长按图片保存） */}
+      {/* 截图预览弹窗（移动端/微信：毛玻璃弹窗 + 点图全屏预览） */}
       <AnimatePresence>
-        {screenshotDataUrl && (
+        {screenshotDataUrl && !screenshotFullscreen && (
           <motion.div
-            className="fixed inset-0 z-[500] flex flex-col items-center justify-center"
-            style={{ background: "rgba(0,0,0,0.92)", padding: "1.5rem" }}
+            className="fixed inset-0 z-[500] flex items-center justify-center"
+            style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)" }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
-            onClick={() => setScreenshotDataUrl(null)}
           >
             <motion.div
-              style={{ maxWidth: "min(380px, 92vw)", width: "100%" }}
-              initial={{ scale: 0.92, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.92, opacity: 0 }}
+              style={{
+                position: "relative",
+                maxWidth: "min(360px, 88vw)",
+                width: "100%",
+                background: "rgba(18,22,42,0.90)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: "20px",
+                padding: "1.25rem",
+                boxShadow: "0 12px 48px rgba(0,0,0,0.6)",
+              }}
+              initial={{ scale: 0.90, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.90, opacity: 0, y: 20 }}
               transition={{ ...springGentle }}
-              onClick={(e) => e.stopPropagation()}
             >
-              <p style={{ fontSize: "0.75rem", letterSpacing: "0.2em", color: "rgba(255,255,255,0.45)", textAlign: "center", marginBottom: "0.8rem" }}>
-                长按图片保存到相册
-              </p>
+              {/* × 关闭按钮 */}
+              <button
+                onClick={() => setScreenshotDataUrl(null)}
+                style={{
+                  position: "absolute", top: 10, right: 12,
+                  background: "none", border: "none", cursor: "pointer",
+                  color: "rgba(255,255,255,0.35)", fontSize: "1.1rem", lineHeight: 1,
+                  padding: "4px", zIndex: 1,
+                }}
+              >×</button>
+
+              {/* 缩略图（点击进入全屏预览） */}
               <img
                 src={screenshotDataUrl}
                 alt="长图预览"
-                style={{ width: "100%", borderRadius: "12px", display: "block" }}
+                onClick={() => setScreenshotFullscreen(true)}
+                style={{
+                  width: "100%",
+                  maxHeight: "55vh",
+                  objectFit: "contain",
+                  borderRadius: "10px",
+                  display: "block",
+                  cursor: "zoom-in",
+                }}
                 draggable={false}
               />
+
+              {/* 下载按钮 */}
               <motion.button
+                onClick={() => downloadSnapshot(screenshotDataUrl, "birthday.png")}
                 style={{
-                  marginTop: "1rem",
+                  marginTop: "0.9rem",
                   width: "100%",
-                  padding: "0.75rem",
+                  padding: "0.7rem",
                   borderRadius: "2rem",
-                  background: "rgba(255,255,255,0.08)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  backdropFilter: "blur(12px)",
-                  WebkitBackdropFilter: "blur(12px)",
-                  color: "rgba(255,255,255,0.60)",
-                  fontSize: "0.75rem",
-                  letterSpacing: "0.25em",
+                  background: "rgba(255,255,255,0.10)",
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  color: "rgba(255,255,255,0.75)",
+                  fontSize: "0.78rem",
+                  letterSpacing: "0.22em",
                   cursor: "pointer",
                 }}
+                whileHover={{ background: "rgba(255,255,255,0.15)" }}
                 whileTap={{ scale: 0.96 }}
-                onClick={() => setScreenshotDataUrl(null)}
               >
-                关闭
+                下载长图
               </motion.button>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 全屏预览（移动端点缩略图后进入，显示长按提示） */}
+      <AnimatePresence>
+        {screenshotDataUrl && screenshotFullscreen && (
+          <motion.div
+            className="fixed inset-0 z-[600] overflow-y-auto"
+            style={{ background: "rgba(0,0,0,0.96)" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setScreenshotFullscreen(false)}
+          >
+            {/* 长按下载·单点关闭 提示 */}
+            <p style={{
+              textAlign: "center",
+              fontSize: "0.68rem",
+              letterSpacing: "0.2em",
+              color: "rgba(255,255,255,0.35)",
+              padding: "1rem 0 0.6rem",
+              pointerEvents: "none",
+            }}>
+              长按下载 · 单点关闭
+            </p>
+            <img
+              src={screenshotDataUrl}
+              alt="长图"
+              style={{ width: "100%", display: "block" }}
+              draggable={false}
+              onClick={(e) => e.stopPropagation()}
+            />
+            <div style={{ height: "2rem" }} />
           </motion.div>
         )}
       </AnimatePresence>
