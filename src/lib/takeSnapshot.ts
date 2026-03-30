@@ -23,7 +23,7 @@ export interface SnapshotResult {
 
 export async function takeSnapshot(container: HTMLElement): Promise<SnapshotResult> {
   const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-  const scale = isMobile ? 1 : 1.5;
+  const scale = isMobile ? 2 : 2;
 
   // ── 1. crossOrigin：只设 attribute，不重置 src ──────────────────────
   container.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
@@ -53,7 +53,6 @@ export async function takeSnapshot(container: HTMLElement): Promise<SnapshotResu
           resolve();
         };
         tmpImg.onerror = () => {
-          // SVG 转换失败：降级保留原 src，不阻断截图流程
           img.src = svgSrc;
           resolve();
         };
@@ -62,24 +61,29 @@ export async function takeSnapshot(container: HTMLElement): Promise<SnapshotResu
     })
   );
 
+  // ── 1c. 记录真实 DOM 中每个 emoji img 的渲染尺寸 ────────────────────
+  // onclone 里 img 尚未布局，必须在真实 DOM 里预先读取
+  const emojiSizeMap = new Map<string, { w: number; h: number }>();
+  container.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
+    const src = img.getAttribute("src") || "";
+    if (src.includes("/emoji/")) {
+      const rect = img.getBoundingClientRect();
+      // getBoundingClientRect 在 hidden 幕里可能为 0，降级用 attribute
+      const w = rect.width > 0 ? rect.width : Number(img.getAttribute("width") || 48);
+      const h = rect.height > 0 ? rect.height : Number(img.getAttribute("height") || 48);
+      emojiSizeMap.set(src, { w, h });
+    }
+  });
+
   await new Promise((r) => setTimeout(r, 600));
 
   // ── 2. 在真实 DOM 上找所有 fixed 元素，临时隐藏 ─────────────────────
   // 用真实 DOM 的 getComputedStyle，100% 准确（Tailwind className 也能检测到）
   const hiddenEls: Array<{ el: HTMLElement; prev: string }> = [];
   document.querySelectorAll<HTMLElement>("*").forEach((el) => {
-    if (el === container || container.contains(el)) {
-      // container 内部的 fixed 元素（按钮、提示语等）
-      if (window.getComputedStyle(el).position === "fixed") {
-        hiddenEls.push({ el, prev: el.style.display });
-        el.style.display = "none";
-      }
-    } else {
-      // container 外部的 fixed 元素（portal 弹窗等）
-      if (window.getComputedStyle(el).position === "fixed") {
-        hiddenEls.push({ el, prev: el.style.display });
-        el.style.display = "none";
-      }
+    if (window.getComputedStyle(el).position === "fixed") {
+      hiddenEls.push({ el, prev: el.style.display });
+      el.style.display = "none";
     }
   });
 
@@ -102,17 +106,23 @@ export async function takeSnapshot(container: HTMLElement): Promise<SnapshotResu
       useCORS: true,
       allowTaint: false,
       scale,
+      // width/height 显式传入，确保 html2canvas 截取全部内容而不只是可见区域
+      width: totalWidth,
+      height: totalHeight,
       backgroundColor: "#080d1a",
       logging: false,
       onclone: (clonedDoc, clonedContainer) => {
         // ── A. 展开 scroll-snap 容器 ────────────────────────────────────
-        clonedContainer.style.height = "auto";
-        clonedContainer.style.minHeight = "auto";
+        clonedContainer.style.height = `${totalHeight}px`;
+        clonedContainer.style.minHeight = `${totalHeight}px`;
         clonedContainer.style.overflowY = "visible";
         clonedContainer.style.overflowX = "visible";
         clonedContainer.style.scrollSnapType = "none";
         clonedContainer.style.position = "relative";
-        // 星空渐变背景（替代 canvas 动画，确保截图有正确的深蓝底色）
+        // body/html 背景也设置，确保 html2canvas 底色正确
+        clonedDoc.body.style.background = "#080d1a";
+        clonedDoc.documentElement.style.background = "#080d1a";
+        // 星空渐变背景（直接设在容器上，覆盖 class 里的纯色）
         clonedContainer.style.background = [
           `radial-gradient(ellipse ${Math.round(totalWidth*0.6)}px ${Math.round(totalHeight*0.18)}px at ${Math.round(totalWidth*0.22)}px ${Math.round(totalHeight*0.05)}px, rgba(70,95,210,0.18) 0%, transparent 100%)`,
           `radial-gradient(ellipse ${Math.round(totalWidth*0.5)}px ${Math.round(totalHeight*0.15)}px at ${Math.round(totalWidth*0.80)}px ${Math.round(totalHeight*0.30)}px, rgba(120,70,185,0.14) 0%, transparent 100%)`,
@@ -128,14 +138,12 @@ export async function takeSnapshot(container: HTMLElement): Promise<SnapshotResu
         });
 
         // ── C. 替换 backdrop-filter ─────────────────────────────────────
-        // inline style 里有 backdropFilter 的元素（Framer Motion style prop）
         clonedContainer.querySelectorAll<HTMLElement>("*").forEach((el) => {
           const s = el.style;
           const bf = s.backdropFilter || (s as unknown as Record<string,string>).webkitBackdropFilter || "";
           if (bf && bf !== "none") {
             s.backdropFilter = "none";
             (s as unknown as Record<string,string>).webkitBackdropFilter = "none";
-            // 有图片子元素的不补背景（保护卡片图片）
             if (!el.querySelector("img")) {
               s.background = "rgba(13,16,32,0.95)";
             }
@@ -143,33 +151,32 @@ export async function takeSnapshot(container: HTMLElement): Promise<SnapshotResu
         });
 
         // ── D. 修复 EmojiImage（/emoji/ 路径）尺寸 ──────────────────────
-        // Next.js Image 在 clone 里 CSS class 失效，inline style 可能是 width:auto
-        // 用 src 路径识别 emoji img，从真实 DOM 读取渲染尺寸后强制覆盖
+        // 用步骤 1c 预记录的真实渲染尺寸，避免 clone 里尺寸无法确定的问题
         clonedContainer.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
           const src = img.getAttribute("src") || img.src || "";
           if (src.includes("/emoji/")) {
-            // 从 width/height attribute 读取目标尺寸（Next.js Image 会写入）
-            // 如果 attribute 不存在，从 naturalWidth 或默认值兜底
-            const attrW = img.getAttribute("width");
-            const attrH = img.getAttribute("height");
-            const size = attrW ? `${attrW}px` : attrH ? `${attrH}px` : "48px";
-            // 用 setProperty + important 确保覆盖 Next.js 注入的 width:auto
-            img.style.setProperty("width", size, "important");
-            img.style.setProperty("height", size, "important");
-            img.style.setProperty("max-width", size, "important");
-            img.style.setProperty("max-height", size, "important");
-            img.style.setProperty("min-width", size, "important");
-            img.style.setProperty("min-height", size, "important");
+            const recorded = emojiSizeMap.get(img.getAttribute("src") || "");
+            const w = recorded ? recorded.w : Number(img.getAttribute("width") || 48);
+            const h = recorded ? recorded.h : Number(img.getAttribute("height") || 48);
+            const sw = `${w}px`;
+            const sh = `${h}px`;
+            img.style.setProperty("width", sw, "important");
+            img.style.setProperty("height", sh, "important");
+            img.style.setProperty("max-width", sw, "important");
+            img.style.setProperty("max-height", sh, "important");
+            img.style.setProperty("min-width", sw, "important");
+            img.style.setProperty("min-height", sh, "important");
             img.style.setProperty("object-fit", "contain", "important");
-            img.style.setProperty("position", "static", "important");
             img.style.setProperty("display", "block", "important");
             img.style.setProperty("flex-shrink", "0", "important");
+            img.style.removeProperty("position");
             // 修复父 SPAN（Next.js Image wrapper）
             const parent = img.parentElement;
             if (parent && parent.tagName === "SPAN") {
-              parent.style.setProperty("width", size, "important");
-              parent.style.setProperty("height", size, "important");
-              parent.style.setProperty("max-width", size, "important");
+              parent.style.setProperty("width", sw, "important");
+              parent.style.setProperty("height", sh, "important");
+              parent.style.setProperty("max-width", sw, "important");
+              parent.style.setProperty("min-width", sw, "important");
               parent.style.setProperty("overflow", "hidden", "important");
               parent.style.setProperty("display", "inline-block", "important");
               parent.style.setProperty("flex-shrink", "0", "important");
@@ -213,7 +220,7 @@ export async function takeSnapshot(container: HTMLElement): Promise<SnapshotResu
         starsEl.style.pointerEvents = "none";
         starsEl.style.boxShadow = shadows.join(",");
         clonedContainer.insertBefore(starsEl, clonedContainer.firstChild);
-        // 同时移除克隆文档中可能存在的 canvas 元素（CosmicBackground 动画 canvas）
+        // 移除克隆文档中的 canvas 元素（CosmicBackground 动画 canvas）
         clonedDoc.querySelectorAll<HTMLCanvasElement>("canvas").forEach((cv) => cv.remove());
       },
     });
