@@ -94,9 +94,11 @@ export function useAudioPlayer(src: string) {
       if (!audio) return;
       targetVolRef.current = targetVolume;
       clearFade();
-      // 无条件从头播放，避免 unlock 异步完成前 currentTime 未归零
-      audio.currentTime = 0;
-      audio.volume = 0;
+      // 如果已经在播放（例如处于 playMuted 预热状态），则不重置时间，只渐入音量
+      if (audio.paused) {
+        audio.currentTime = 0;
+        audio.volume = 0;
+      }
       const p = audio.play();
       if (p) {
         p.then(() => {
