@@ -258,7 +258,7 @@ export function ResultPageShell({
 
     // 物理位置守卫：确保容器确实滚动到了蛋糕幕附近（第4屏开始于 3.0innerHeight），防止平板等大屏设备误触发
     const container = scrollContainerRef.current;
-    if (container && container.scrollTop < window.innerHeight * 2.2) return;
+    if (!container || container.scrollTop < window.innerHeight * 2.2) return;
 
     birthdaySongStarted.current = true;
     activeTrackRef.current = "birthday";
@@ -306,7 +306,7 @@ export function ResultPageShell({
 
     // 物理位置守卫：确保容器确实滚动到了礼物幕附近（第5屏开始于 4.0innerHeight），防止平板等大屏设备误触发
     const container = scrollContainerRef.current;
-    if (container && container.scrollTop < window.innerHeight * 3.2) return;
+    if (!container || container.scrollTop < window.innerHeight * 3.2) return;
 
     birthdayExitedCakeRef.current = true;
     // 强制重置状态，确保 ensureBirthdaySongStopped 不被 birthdaySongStarted=false 拦截

@@ -94,8 +94,9 @@ export function useAudioPlayer(src: string) {
       if (!audio) return;
       targetVolRef.current = targetVolume;
       clearFade();
-      // 如果已经在播放（例如处于 playMuted 预热状态），则不重置时间，只渐入音量
-      if (audio.paused) {
+      // 如果已经在播放（例如处于 playMuted 预热状态）且已经有进度，则不重置时间，只渐入音量
+      // 否则（如刚从 unlock 恢复或初次播放）强制归零
+      if (audio.paused || audio.currentTime < 0.1) {
         audio.currentTime = 0;
         audio.volume = 0;
       }
