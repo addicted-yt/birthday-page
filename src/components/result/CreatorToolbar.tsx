@@ -25,7 +25,7 @@ export function CreatorToolbar({ shareUrl, sessionId, onNavigateAway, onTakeSnap
 
   const startLongPress = () => {
     // 5s、10s、15s 震动提示
-    const vibTimes = [5000, 10000, 15000];
+    const vibTimes = [3000, 6000, 9000];
     vibTimes.forEach((t) => {
       const id = setTimeout(() => {
         try { navigator.vibrate?.(40); } catch { /* ignore */ }
@@ -35,7 +35,7 @@ export function CreatorToolbar({ shareUrl, sessionId, onNavigateAway, onTakeSnap
     longPressTimer.current = setTimeout(() => {
       try { navigator.vibrate?.(100); } catch { /* ignore */ }
       setShowAdminDialog(true);
-    }, 20000);
+    }, 10000);
   };
 
   const cancelLongPress = () => {
