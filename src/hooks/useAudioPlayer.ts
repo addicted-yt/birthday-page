@@ -65,13 +65,17 @@ export function useAudioPlayer(src: string) {
     const prevVolume = audio.volume;
     audio.muted = true;
     audio.volume = 0;
+    // 确保从头开始且处于暂停状态，清除任何之前的状态
+    audio.pause();
+    audio.currentTime = 0;
+
     const p = audio.play();
     if (p) {
       p.then(() => {
         audio.pause();
         audio.currentTime = 0;
         audio.muted = prevMuted;
-        audio.volume = prevVolume;
+        audio.volume = 0; // 强制保持 0，避免解锁时的“闪响”
         unlockPromiseRef.current = null;
         resolveUnlock();
       }).catch(() => {
@@ -136,18 +140,21 @@ export function useAudioPlayer(src: string) {
     const p = audio.play();
     if (p) {
       p.then(() => {
-        playingRef.current = true;
+        // 注意：这里不设置 playingRef.current = true，防止 pause 监听器自动触发 fadeIn
       }).catch(() => {
         onBlocked?.();
       });
     } else {
-      playingRef.current = true;
+      // 不设 playingRef
     }
   }, [getAudio, clearFade]);
 
   const fadeOut = useCallback((onDone?: () => void) => {
     const audio = getAudio();
-    if (!audio) return;
+    if (!audio || !playingRef.current) {
+      onDone?.();
+      return;
+    }
     playingRef.current = false;
     clearFade();
 

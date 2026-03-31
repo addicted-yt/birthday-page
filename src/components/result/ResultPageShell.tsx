@@ -255,6 +255,11 @@ export function ResultPageShell({
   const handleCandleEnter = useCallback(() => {
     if (birthdaySongStarted.current) return;
     if (!curtainDone) return; // 引导幕未完全消散，不启动音乐
+
+    // 物理位置守卫：确保容器确实滚动到了蛋糕幕附近（第4屏开始于 3.0innerHeight），防止平板等大屏设备误触发
+    const container = scrollContainerRef.current;
+    if (container && container.scrollTop < window.innerHeight * 2.2) return;
+
     birthdaySongStarted.current = true;
     activeTrackRef.current = "birthday";
     birthdaySong.fadeIn(0.72, () => {
@@ -298,6 +303,11 @@ export function ResultPageShell({
 
   const handleGiftEnter = useCallback(() => {
     if (!curtainDone) return; // 引导幕未完全消散，不处理
+
+    // 物理位置守卫：确保容器确实滚动到了礼物幕附近（第5屏开始于 4.0innerHeight），防止平板等大屏设备误触发
+    const container = scrollContainerRef.current;
+    if (container && container.scrollTop < window.innerHeight * 3.2) return;
+
     birthdayExitedCakeRef.current = true;
     // 强制重置状态，确保 ensureBirthdaySongStopped 不被 birthdaySongStarted=false 拦截
     // 移动端 autoplay 重试期间 birthdaySongStarted 可能为 false，但 audio 实际在播
@@ -307,6 +317,7 @@ export function ResultPageShell({
   }, [ensureBirthdaySongStopped, curtainDone]);
 
   const handleGiftTap = useCallback(() => {
+    if (!curtainDone) return; // 引导幕未完全消散，不响应
     // 点击礼物瞬间立即启动：停止 birthday song、预启动 piano（静音），不等 1400ms 动画
     // 注意：setGiftOpened 不在这里调用，避免信件字幕在滚动前提前开始
     if (!pianoStarted.current) {
