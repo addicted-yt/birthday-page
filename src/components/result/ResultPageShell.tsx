@@ -680,7 +680,7 @@ export function ResultPageShell({
       <AnimatePresence>
         {endingCTA && endingVisible && (
           <motion.div
-            className="fixed bottom-12 left-0 right-0 flex flex-col items-center gap-4 z-50"
+            className="fixed bottom-9 left-0 right-0 flex flex-col items-center gap-2 z-50"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ ...springGentle, delay: 1.0 }}

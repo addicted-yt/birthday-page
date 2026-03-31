@@ -1,3 +1,6 @@
+"use client";
+import { motion } from "framer-motion";
+
 export function BrandFooter({ opacity = 0.35 }: { opacity?: number }) {
   return (
     <div className="flex flex-col items-center gap-1">
@@ -7,13 +10,20 @@ export function BrandFooter({ opacity = 0.35 }: { opacity?: number }) {
       >
         crafted by yt
       </p>
-      <a
+      <motion.a
         href="mailto:z3125243839@163.com?subject=祝福网站反馈"
-        className="text-xs tracking-widest font-light"
-        style={{ opacity: opacity * 0.7, fontSize: "11px", textDecoration: "none", color: "inherit" }}
+        whileTap={{ scale: 0.90 }}
+        style={{
+          fontSize: "clamp(0.62rem, 1.2vw, 0.72rem)",
+          letterSpacing: "0.18em",
+          color: "rgba(255,255,255,0.28)",
+          textDecoration: "none",
+          whiteSpace: "nowrap",
+          display: "block",
+        }}
       >
         · 意见反馈 ·
-      </a>
+      </motion.a>
     </div>
   );
 }
