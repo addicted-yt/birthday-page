@@ -91,6 +91,12 @@ export function Scene4Gift({ onOpen, onTap, onEnter, sectionRef: externalSection
 
   const handleOpen = () => {
     if (hasOpened.current) return;
+    // 守卫：礼物幕不在视口时不响应（防止微信 WKWebView 触摸事件穿透）
+    const el = internalSectionRef.current;
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      if (rect.bottom <= 0 || rect.top >= window.innerHeight) return;
+    }
     hasOpened.current = true;
     setOpened(true);
     onTapRef.current?.();  // 立即通知外部（启动 piano、停止 birthday song），不等粒子动画

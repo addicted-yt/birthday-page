@@ -254,6 +254,7 @@ export function ResultPageShell({
 
   const handleCandleEnter = useCallback(() => {
     if (birthdaySongStarted.current) return;
+    if (!curtainDone) return; // 引导幕未完全消散，不启动音乐
     birthdaySongStarted.current = true;
     activeTrackRef.current = "birthday";
     birthdaySong.fadeIn(0.72, () => {
@@ -269,7 +270,7 @@ export function ResultPageShell({
       }, 600);
     });
     setMusicOn(true);
-  }, [birthdaySong]);
+  }, [birthdaySong, curtainDone]);
   handleCandleEnterRef.current = handleCandleEnter;
 
   const handleCurtainStart = useCallback(() => {
@@ -296,13 +297,14 @@ export function ResultPageShell({
   }, [ensureBirthdaySongStopped, scrollToSection]);
 
   const handleGiftEnter = useCallback(() => {
+    if (!curtainDone) return; // 引导幕未完全消散，不处理
     birthdayExitedCakeRef.current = true;
     // 强制重置状态，确保 ensureBirthdaySongStopped 不被 birthdaySongStarted=false 拦截
     // 移动端 autoplay 重试期间 birthdaySongStarted 可能为 false，但 audio 实际在播
     birthdaySongStarted.current = true;
     birthdayFadePromiseRef.current = null;
     void ensureBirthdaySongStopped();
-  }, [ensureBirthdaySongStopped]);
+  }, [ensureBirthdaySongStopped, curtainDone]);
 
   const handleGiftTap = useCallback(() => {
     // 点击礼物瞬间立即启动：停止 birthday song、预启动 piano（静音），不等 1400ms 动画
@@ -580,6 +582,7 @@ export function ResultPageShell({
       <Scene4_5Candle
         onEnter={handleCandleEnter}
         onExiting={() => {
+          if (birthdayExitedCakeRef.current) return; // 幂等守卫，防止多次触发
           birthdayExitedCakeRef.current = true;
           // 强制重置，防止 birthdaySongStarted=false 或卡住的 promise 拦截 fadeOut
           birthdaySongStarted.current = true;
