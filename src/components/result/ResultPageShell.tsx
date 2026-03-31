@@ -613,67 +613,66 @@ export function ResultPageShell({
       <AnimatePresence>
         {endingVisible && (
           <motion.div
-            className="fixed z-50 select-none flex items-center gap-4"
+            className="fixed z-50 select-none flex items-center gap-2"
             style={{ bottom: "1rem", left: "50%", transform: "translateX(-50%)" }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ ...springGentle, delay: 1.2 }}
           >
-            <div className="flex items-center gap-4">
+            <motion.button
+              onClick={handleMusicToggle}
+              whileTap={{ scale: 0.90 }}
+              style={{
+                fontSize: "clamp(0.62rem, 1.2vw, 0.72rem)",
+                letterSpacing: "0.18em",
+                color: "rgba(255,255,255,0.28)",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: 0,
+                transition: "color 0.3s ease",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {musicOn ? "· 关闭音乐 ·" : "· 开启音乐 ·"}
+            </motion.button>
+            {showSnapshotButton && (
               <motion.button
-                onClick={handleMusicToggle}
+                onClick={handleTakeSnapshot}
+                disabled={screenshotLoading}
                 whileTap={{ scale: 0.90 }}
                 style={{
-                  fontSize: "clamp(0.72rem, 1.4vw, 0.85rem)",
-                  letterSpacing: "0.35em",
-                  color: "rgba(255,255,255,0.40)",
+                  fontSize: "clamp(0.62rem, 1.2vw, 0.72rem)",
+                  letterSpacing: "0.18em",
+                  color: screenshotLoading ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.28)",
                   background: "none",
                   border: "none",
-                  cursor: "pointer",
+                  cursor: screenshotLoading ? "not-allowed" : "pointer",
                   padding: 0,
                   transition: "color 0.3s ease",
                   whiteSpace: "nowrap",
                 }}
               >
-                {musicOn ? "· 关闭音乐 ·" : "· 开启音乐 ·"}
+                {screenshotLoading ? "· 截图中 ·" : "· 保存长图 ·"}
               </motion.button>
-              {showSnapshotButton && (
-                <motion.button
-                  onClick={handleTakeSnapshot}
-                  disabled={screenshotLoading}
-                  whileTap={{ scale: 0.90 }}
-                  style={{
-                    fontSize: "clamp(0.72rem, 1.4vw, 0.85rem)",
-                    letterSpacing: "0.35em",
-                    color: screenshotLoading ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.40)",
-                    background: "none",
-                    border: "none",
-                    cursor: screenshotLoading ? "not-allowed" : "pointer",
-                    padding: 0,
-                    transition: "color 0.3s ease",
-                  }}
-                >
-                  {screenshotLoading ? "· 截图中 ·" : "· 保存长图 ·"}
-                </motion.button>
-              )}
-              {/* 非 demo 页：反馈与音乐同排，格式相同 */}
-              {!showSnapshotButton && (
-                <motion.a
-                  href="mailto:z3125243839@163.com?subject=祝福网站反馈"
-                  whileTap={{ scale: 0.90 }}
-                  style={{
-                    fontSize: "clamp(0.72rem, 1.4vw, 0.85rem)",
-                    letterSpacing: "0.35em",
-                    color: "rgba(255,255,255,0.40)",
-                    textDecoration: "none",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  · 意见反馈 ·
-                </motion.a>
-              )}
-            </div>
+            )}
+            {/* 非 demo 页：反馈与音乐同排，格式相同 */}
+            {!showSnapshotButton && (
+              <motion.a
+                href="mailto:z3125243839@163.com?subject=祝福网站反馈"
+                whileTap={{ scale: 0.90 }}
+                style={{
+                  fontSize: "clamp(0.62rem, 1.2vw, 0.72rem)",
+                  letterSpacing: "0.18em",
+                  color: "rgba(255,255,255,0.28)",
+                  textDecoration: "none",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                · 意见反馈 ·
+              </motion.a>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -701,7 +700,7 @@ export function ResultPageShell({
           <motion.div
             className="fixed z-50 select-none"
             style={{
-              bottom: "3.8rem",
+              bottom: "3.2rem",
               left: 0,
               right: 0,
               display: "flex",
