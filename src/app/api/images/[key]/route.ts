@@ -35,8 +35,8 @@ export async function GET(
 ): Promise<NextResponse> {
   const { key } = await params;
 
-  // 安全校验：key 只允许 UUID 格式（字母数字和连字符），防止路径注入
-  if (!/^[\w-]{1,100}$/.test(key)) {
+  // 安全校验：key 只允许 UUID 格式或 images/ 前缀的 UUID（字母数字、连字符、斜杠），防止路径注入
+  if (!/^(images\/)?[\w-]{1,100}$/.test(key)) {
     return NextResponse.json({ error: "无效的 key" }, { status: 400 });
   }
 
@@ -45,7 +45,11 @@ export async function GET(
     return NextResponse.json({ error: "图片服务暂不可用（仅 Workers 环境支持）" }, { status: 503 });
   }
 
-  const object = await bucket.get(key);
+  // 兼容新前缀 images/{uuid} 和旧裸 UUID：先按 key 原样查找，再尝试加前缀
+  let object = await bucket.get(key);
+  if (!object && !key.startsWith("images/")) {
+    object = await bucket.get(`images/${key}`);
+  }
   if (!object) {
     return NextResponse.json({ error: "图片不存在或已过期" }, { status: 404 });
   }

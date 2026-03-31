@@ -66,7 +66,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // 验证密码
   const adminPassword = getAdminPassword();
   if (!adminPassword || password !== adminPassword) {
-    return NextResponse.json({ error: "密码错误" }, { status: 403 });
+    return NextResponse.json({
+      error: "密码错误",
+      debug: { envFound: !!adminPassword, envLen: adminPassword?.length ?? 0, inputLen: typeof password === "string" ? password.length : -1 },
+    }, { status: 403 });
   }
 
   const bucket = getR2Bucket();

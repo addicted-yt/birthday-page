@@ -613,48 +613,51 @@ export function ResultPageShell({
       <AnimatePresence>
         {endingVisible && (
           <motion.div
-            className="fixed z-50 select-none flex items-center gap-4"
+            className="fixed z-50 select-none flex flex-col items-center gap-3"
             style={{ bottom: "1.5rem", left: "50%", transform: "translateX(-50%)" }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ ...springGentle, delay: 1.2 }}
           >
-            <motion.button onClick={handleMusicToggle}>
-              <span
-                style={{
-                  fontSize: "clamp(0.72rem, 1.4vw, 0.85rem)",
-                  letterSpacing: "0.35em",
-                  color: "rgba(255,255,255,0.40)",
-                  display: "block",
-                  transition: "color 0.3s ease",
-                }}
-              >
-                {musicOn ? "· 关闭音乐 ·" : "· 开启音乐 ·"}
-              </span>
-            </motion.button>
-            {showSnapshotButton && (
-              <motion.button
-                onClick={handleTakeSnapshot}
-                disabled={screenshotLoading}
-                whileTap={{ scale: 0.90 }}
-                style={{
-                  fontSize: "clamp(0.72rem, 1.4vw, 0.85rem)",
-                  letterSpacing: "0.35em",
-                  color: screenshotLoading ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.40)",
-                  background: "none",
-                  border: "none",
-                  cursor: screenshotLoading ? "not-allowed" : "pointer",
-                  padding: 0,
-                  transition: "color 0.3s ease",
-                }}
-              >
-                {screenshotLoading ? "· 截图中 ·" : "· 保存长图 ·"}
+            <div className="flex items-center gap-4">
+              <motion.button onClick={handleMusicToggle}>
+                <span
+                  style={{
+                    fontSize: "clamp(0.72rem, 1.4vw, 0.85rem)",
+                    letterSpacing: "0.35em",
+                    color: "rgba(255,255,255,0.40)",
+                    display: "block",
+                    transition: "color 0.3s ease",
+                  }}
+                >
+                  {musicOn ? "· 关闭音乐 ·" : "· 开启音乐 ·"}
+                </span>
               </motion.button>
-            )}
-            {/* 意见反馈链接 */}
-            <a
+              {showSnapshotButton && (
+                <motion.button
+                  onClick={handleTakeSnapshot}
+                  disabled={screenshotLoading}
+                  whileTap={{ scale: 0.90 }}
+                  style={{
+                    fontSize: "clamp(0.72rem, 1.4vw, 0.85rem)",
+                    letterSpacing: "0.35em",
+                    color: screenshotLoading ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.40)",
+                    background: "none",
+                    border: "none",
+                    cursor: screenshotLoading ? "not-allowed" : "pointer",
+                    padding: 0,
+                    transition: "color 0.3s ease",
+                  }}
+                >
+                  {screenshotLoading ? "· 截图中 ·" : "· 保存长图 ·"}
+                </motion.button>
+              )}
+            </div>
+            {/* 意见反馈：demo 页在下方单独一行，成品页横排已在同一 flex 行 */}
+            <motion.a
               href="mailto:z3125243839@163.com?subject=祝福网站反馈"
+              whileTap={{ scale: 0.90 }}
               style={{
                 fontSize: "clamp(0.72rem, 1.4vw, 0.85rem)",
                 letterSpacing: "0.35em",
@@ -664,7 +667,7 @@ export function ResultPageShell({
               }}
             >
               · 意见反馈 ·
-            </a>
+            </motion.a>
           </motion.div>
         )}
       </AnimatePresence>
