@@ -72,17 +72,23 @@ export function useAudioPlayer(src: string) {
     const p = audio.play();
     if (p) {
       p.then(() => {
+        // 关键修复：在异步回调中，先 pause 再操作其他状态
         audio.pause();
         audio.currentTime = 0;
-        audio.muted = prevMuted;
-        audio.volume = 0; // 强制保持 0，避免解锁时的“闪响”
+        // iPad/iOS 忽略 volume=0，必须保持 muted=true 直到真正 fadeIn
+        audio.muted = true;
+        audio.volume = 0;
         unlockPromiseRef.current = null;
         resolveUnlock();
       }).catch(() => {
+        audio.pause();
+        audio.currentTime = 0;
         unlockPromiseRef.current = null;
         resolveUnlock();
       });
     } else {
+      audio.pause();
+      audio.currentTime = 0;
       unlockPromiseRef.current = null;
       resolveUnlock();
     }
@@ -94,6 +100,10 @@ export function useAudioPlayer(src: string) {
       if (!audio) return;
       targetVolRef.current = targetVolume;
       clearFade();
+
+      // 准备播放：取消静音，设置音量为 0
+      audio.muted = false;
+
       // 如果已经在播放（例如处于 playMuted 预热状态）且已经有进度，则不重置时间，只渐入音量
       // 否则（如刚从 unlock 恢复或初次播放）强制归零
       if (audio.paused || audio.currentTime < 0.1) {
@@ -136,7 +146,11 @@ export function useAudioPlayer(src: string) {
     if (!audio) return;
     clearFade();
     targetVolRef.current = Math.max(targetVolRef.current, 0.65);
+
+    // 预热播放：保持 muted=true 确保在 iOS/iPad 上绝对静音
+    audio.muted = true;
     audio.volume = 0;
+
     if (audio.currentTime > 0 && !playingRef.current) {
       audio.currentTime = 0;
     }

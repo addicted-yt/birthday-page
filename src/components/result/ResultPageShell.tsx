@@ -280,10 +280,13 @@ export function ResultPageShell({
 
   const handleCurtainStart = useCallback(() => {
     // 用户点击启幕按钮：解锁音频（在用户手势回调里，100% 可靠）然后消散引导幕
+    // 增加防止重复点击的保护
+    if (!showCurtain) return;
+
     birthdaySong.unlock();
     pianoMusic.unlock();
     setShowCurtain(false);
-  }, [birthdaySong, pianoMusic]);
+  }, [birthdaySong, pianoMusic, showCurtain]);
 
   const handleCandleBlown = useCallback(() => {
     birthdayExitedCakeRef.current = true;
