@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { springGentle, springPress } from "@/lib/animationPresets";
@@ -15,6 +15,62 @@ interface CreatorToolbarProps {
 export function CreatorToolbar({ shareUrl, sessionId, onNavigateAway, onTakeSnapshot, snapshotLoading }: CreatorToolbarProps) {
   const router = useRouter();
   const [showToast, setShowToast] = useState(false);
+
+  // 管理员隐藏入口：长按 Toast 20 秒
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const vibrateTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const [showAdminDialog, setShowAdminDialog] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [adminStatus, setAdminStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+
+  const startLongPress = () => {
+    // 5s、10s、15s 震动提示
+    const vibTimes = [5000, 10000, 15000];
+    vibTimes.forEach((t) => {
+      const id = setTimeout(() => {
+        try { navigator.vibrate?.(40); } catch { /* ignore */ }
+      }, t);
+      vibrateTimers.current.push(id);
+    });
+    longPressTimer.current = setTimeout(() => {
+      try { navigator.vibrate?.(100); } catch { /* ignore */ }
+      setShowAdminDialog(true);
+    }, 20000);
+  };
+
+  const cancelLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    vibrateTimers.current.forEach((id) => clearTimeout(id));
+    vibrateTimers.current = [];
+  };
+
+  const handleAdminSave = async () => {
+    if (!sessionId || !adminPassword) return;
+    setAdminStatus("loading");
+    try {
+      const res = await fetch("/api/permanent/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, password: adminPassword }),
+      });
+      if (res.ok) {
+        setAdminStatus("success");
+      } else {
+        setAdminStatus("error");
+      }
+    } catch {
+      setAdminStatus("error");
+    }
+  };
+
+  const closeAdminDialog = () => {
+    setShowAdminDialog(false);
+    setAdminPassword("");
+    setAdminStatus("idle");
+  };
 
   const handleShare = async () => {
     try {
@@ -106,7 +162,12 @@ export function CreatorToolbar({ shareUrl, sessionId, onNavigateAway, onTakeSnap
                 boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
                 position: "relative",
                 minWidth: "240px",
+                userSelect: "none",
               }}
+              onPointerDown={startLongPress}
+              onPointerUp={cancelLongPress}
+              onPointerLeave={cancelLongPress}
+              onPointerCancel={cancelLongPress}
             >
               {/* × 关闭按钮 */}
               <button
@@ -149,6 +210,89 @@ export function CreatorToolbar({ shareUrl, sessionId, onNavigateAway, onTakeSnap
                 </motion.button>
               </p>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 管理员密码对话框 */}
+      <AnimatePresence>
+        {showAdminDialog && (
+          <motion.div
+            className="fixed inset-0 z-[400] flex items-center justify-center"
+            style={{ background: "rgba(0,0,0,0.6)" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={(e) => { if (e.target === e.currentTarget) closeAdminDialog(); }}
+          >
+            <motion.div
+              className="flex flex-col gap-4 px-6 py-6 rounded-2xl"
+              style={{
+                background: "rgba(18,22,42,0.98)",
+                border: "1px solid rgba(255,255,255,0.14)",
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)",
+                boxShadow: "0 8px 40px rgba(0,0,0,0.6)",
+                minWidth: "260px",
+                maxWidth: "320px",
+                width: "90vw",
+              }}
+              initial={{ scale: 0.92, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.92, opacity: 0 }}
+              transition={springGentle}
+            >
+              <p className="text-white/80 text-sm font-light tracking-wider text-center">永久保存</p>
+              {adminStatus === "success" ? (
+                <p className="text-green-400/80 text-xs text-center tracking-wide">已标记为永久保存 ✓</p>
+              ) : (
+                <>
+                  <input
+                    type="password"
+                    placeholder="管理员密码"
+                    value={adminPassword}
+                    onChange={(e) => { setAdminPassword(e.target.value); setAdminStatus("idle"); }}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleAdminSave(); }}
+                    style={{
+                      background: "rgba(255,255,255,0.07)",
+                      border: "1px solid rgba(255,255,255,0.14)",
+                      borderRadius: "8px",
+                      padding: "8px 12px",
+                      color: "rgba(255,255,255,0.85)",
+                      fontSize: "0.8rem",
+                      outline: "none",
+                      width: "100%",
+                    }}
+                    autoFocus
+                  />
+                  {adminStatus === "error" && (
+                    <p className="text-red-400/70 text-xs text-center tracking-wide">密码错误</p>
+                  )}
+                  <div className="flex gap-3 justify-end">
+                    <button
+                      onClick={closeAdminDialog}
+                      style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.75rem", background: "none", border: "none", cursor: "pointer", letterSpacing: "0.05em" }}
+                    >
+                      取消
+                    </button>
+                    <button
+                      onClick={handleAdminSave}
+                      disabled={adminStatus === "loading" || !adminPassword}
+                      style={{
+                        color: adminStatus === "loading" || !adminPassword ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.80)",
+                        fontSize: "0.75rem",
+                        background: "none",
+                        border: "none",
+                        cursor: adminStatus === "loading" || !adminPassword ? "not-allowed" : "pointer",
+                        letterSpacing: "0.05em",
+                      }}
+                    >
+                      {adminStatus === "loading" ? "保存中…" : "确认保存"}
+                    </button>
+                  </div>
+                </>
+              )}
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

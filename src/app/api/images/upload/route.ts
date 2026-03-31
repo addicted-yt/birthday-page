@@ -76,15 +76,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
     const contentType = mimeMatch[1];
 
-    // 生成随机 key（UUID v4 格式）
-    const key = crypto.randomUUID();
+    // 生成随机 key，加 images/ 前缀便于 R2 lifecycle 规则按前缀管理
+    const uuid = crypto.randomUUID();
+    const key = `images/${uuid}`;
 
     const bucket = getR2Bucket();
 
     if (!bucket) {
       // 非 Workers 环境（Vercel 本地开发）：返回模拟 key，提示功能仅在 Workers 上可用
       // 开发时 dataUrl 留在 sessionStorage，不影响本地测试
-      return NextResponse.json({ key: `local-${key}` });
+      return NextResponse.json({ key: `local-${uuid}` });
     }
 
     // 转换 base64 → Uint8Array

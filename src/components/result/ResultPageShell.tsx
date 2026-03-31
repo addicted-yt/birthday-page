@@ -87,10 +87,12 @@ export function ResultPageShell({
     fetch(`/api/session/${encodeURIComponent(remoteSessionId)}`)
       .then((res) => {
         if (!res.ok) throw new Error("session not found");
-        return res.json() as Promise<BirthdayData>;
+        return res.json() as Promise<BirthdayData & { isPermanent?: boolean }>;
       })
       .then((fetched) => {
-        setData(fetched);
+        const { isPermanent: perm, ...birthdayData } = fetched;
+        setIsPermanent(!!perm);
+        setData(birthdayData as BirthdayData);
       })
       .catch(() => {
         // 服务端拉取失败，降级到 d= 参数（旧链接兼容）
@@ -108,6 +110,8 @@ export function ResultPageShell({
   const [screenshotLoading, setScreenshotLoading] = useState(false);
   // 截图预览弹窗：false=毛玻璃弹窗, true=全屏预览
   const [screenshotFullscreen, setScreenshotFullscreen] = useState(false);
+  // 永久保存状态（从 API 响应中读取）
+  const [isPermanent, setIsPermanent] = useState(false);
   // isCreator（预览页）跳过引导幕，其他情况（收件人/demo）显示
   const [showCurtain, setShowCurtain] = useState(!isCreator);
   // 引导幕消散动画完成后才渲染底层内容，确保第一幕动画全新开始
@@ -648,6 +652,19 @@ export function ResultPageShell({
                 {screenshotLoading ? "· 截图中 ·" : "· 保存长图 ·"}
               </motion.button>
             )}
+            {/* 意见反馈链接 */}
+            <a
+              href="mailto:z3125243839@163.com?subject=祝福网站反馈"
+              style={{
+                fontSize: "clamp(0.72rem, 1.4vw, 0.85rem)",
+                letterSpacing: "0.35em",
+                color: "rgba(255,255,255,0.28)",
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+              }}
+            >
+              · 意见反馈 ·
+            </a>
           </motion.div>
         )}
       </AnimatePresence>
@@ -691,30 +708,63 @@ export function ResultPageShell({
             exit={{ opacity: 0 }}
             transition={{ ...springGentle, delay: 1.6 }}
           >
-            <span style={{ fontSize: "clamp(0.6rem, 1.2vw, 0.72rem)", letterSpacing: "0.12em", color: "rgba(255,255,255,0.28)" }}>
-              因云端数据库容量限制，页面数据将于 15 天内自动删除，可以
-            </span>
-            <motion.button
-              onClick={handleTakeSnapshot}
-              disabled={screenshotLoading}
-              style={{
-                fontSize: "clamp(0.6rem, 1.2vw, 0.72rem)",
-                letterSpacing: "0.12em",
-                color: screenshotLoading ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.50)",
-                textDecoration: "underline",
-                textUnderlineOffset: "3px",
-                background: "none",
-                border: "none",
-                cursor: screenshotLoading ? "not-allowed" : "pointer",
-                padding: 0,
-              }}
-              whileTap={{ scale: 0.92 }}
-            >
-              {screenshotLoading ? "截图中…" : "保存长图"}
-            </motion.button>
-            <span style={{ fontSize: "clamp(0.6rem, 1.2vw, 0.72rem)", letterSpacing: "0.12em", color: "rgba(255,255,255,0.28)" }}>
-              留念
-            </span>
+            {isPermanent ? (
+              // 已永久保存：替换 15 天提示
+              <>
+                <span style={{ fontSize: "clamp(0.6rem, 1.2vw, 0.72rem)", letterSpacing: "0.12em", color: "rgba(255,255,255,0.28)" }}>
+                  此页面已被创作者永久保存，也可以
+                </span>
+                <motion.button
+                  onClick={handleTakeSnapshot}
+                  disabled={screenshotLoading}
+                  style={{
+                    fontSize: "clamp(0.6rem, 1.2vw, 0.72rem)",
+                    letterSpacing: "0.12em",
+                    color: screenshotLoading ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.50)",
+                    textDecoration: "underline",
+                    textUnderlineOffset: "3px",
+                    background: "none",
+                    border: "none",
+                    cursor: screenshotLoading ? "not-allowed" : "pointer",
+                    padding: 0,
+                  }}
+                  whileTap={{ scale: 0.92 }}
+                >
+                  {screenshotLoading ? "截图中…" : "保存长图"}
+                </motion.button>
+                <span style={{ fontSize: "clamp(0.6rem, 1.2vw, 0.72rem)", letterSpacing: "0.12em", color: "rgba(255,255,255,0.28)" }}>
+                  留念
+                </span>
+              </>
+            ) : (
+              // 未永久保存：原 15 天提示
+              <>
+                <span style={{ fontSize: "clamp(0.6rem, 1.2vw, 0.72rem)", letterSpacing: "0.12em", color: "rgba(255,255,255,0.28)" }}>
+                  因云端数据库容量限制，页面数据将于 15 天内自动删除，可以
+                </span>
+                <motion.button
+                  onClick={handleTakeSnapshot}
+                  disabled={screenshotLoading}
+                  style={{
+                    fontSize: "clamp(0.6rem, 1.2vw, 0.72rem)",
+                    letterSpacing: "0.12em",
+                    color: screenshotLoading ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.50)",
+                    textDecoration: "underline",
+                    textUnderlineOffset: "3px",
+                    background: "none",
+                    border: "none",
+                    cursor: screenshotLoading ? "not-allowed" : "pointer",
+                    padding: 0,
+                  }}
+                  whileTap={{ scale: 0.92 }}
+                >
+                  {screenshotLoading ? "截图中…" : "保存长图"}
+                </motion.button>
+                <span style={{ fontSize: "clamp(0.6rem, 1.2vw, 0.72rem)", letterSpacing: "0.12em", color: "rgba(255,255,255,0.28)" }}>
+                  留念
+                </span>
+              </>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
