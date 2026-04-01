@@ -20,6 +20,17 @@ export function HeroSection() {
         transition={{ ...springGentle, delay: 0.3 }}
         className="flex flex-col gap-3"
       >
+        {/* 品牌标签 */}
+        <motion.p
+          className="text-center tracking-[0.45em] font-light"
+          style={{ fontSize: "11px", color: "rgba(200,169,110,0.7)" }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ ...springGentle, delay: 0.1 }}
+        >
+          星 愿
+        </motion.p>
+
         <h1 className="text-4xl md:text-6xl font-extralight tracking-[0.08em] text-white/90">
           送给
           <motion.span
@@ -32,6 +43,8 @@ export function HeroSection() {
               duration: 2.8,
               times: [0, 0.5, 1],
               ease: "easeInOut",
+              repeat: Infinity,
+              repeatDelay: 1.5,
             }}
           >
             TA
