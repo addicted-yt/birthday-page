@@ -13,76 +13,113 @@ export default function AppleIcon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "linear-gradient(135deg, #0e1220 0%, #070910 100%)",
+          background: "radial-gradient(circle at 45% 40%, #141a30 0%, #090c18 100%)",
           borderRadius: 38,
           overflow: "hidden",
           position: "relative",
         }}
       >
-        {/* 内页（奶白色） */}
+        {/* 暖色光晕层 */}
         <div
           style={{
             position: "absolute",
-            left: 52,
-            top: 25,
-            width: 96,
-            height: 130,
-            background: "linear-gradient(160deg, #f5f0e8 0%, #e8e0d0 100%)",
-            borderRadius: 3,
+            left: 0,
+            top: 0,
+            width: 180,
+            height: 180,
+            borderRadius: 38,
+            background: "radial-gradient(circle at 55% 62%, rgba(190,150,70,0.16) 0%, rgba(190,150,70,0.04) 60%, transparent 100%)",
             display: "flex",
           }}
         />
-        {/* 内页文字线条 */}
-        <div style={{ position: "absolute", left: 68, top: 72, width: 64, height: 2, background: "rgba(176,168,152,0.55)", display: "flex" }} />
-        <div style={{ position: "absolute", left: 68, top: 82, width: 48, height: 2, background: "rgba(176,168,152,0.4)", display: "flex" }} />
-        <div style={{ position: "absolute", left: 68, top: 92, width: 56, height: 2, background: "rgba(176,168,152,0.3)", display: "flex" }} />
-        {/* 内页金色装饰（用几何图形代替特殊字符，避免字体加载失败） */}
-        <div style={{
-          position: "absolute",
-          left: 91,
-          top: 40,
-          width: 14,
-          height: 14,
-          background: "#c8a96e",
-          display: "flex",
-          transform: "rotate(45deg)",
-        }} />
-        {/* 封面（深色，偏左） */}
         <div
           style={{
             position: "absolute",
-            left: 22,
-            top: 25,
-            width: 34,
-            height: 130,
-            background: "linear-gradient(160deg, #1c2038 0%, #111525 100%)",
-            borderRadius: "3px 0 0 3px",
+            left: 0,
+            top: 0,
+            width: 180,
+            height: 180,
+            borderRadius: 38,
+            background: "radial-gradient(circle at 50% 50%, rgba(210,175,90,0.12) 0%, transparent 100%)",
             display: "flex",
           }}
         />
-        {/* 封面装订线 */}
-        <div style={{ position: "absolute", left: 55, top: 25, width: 1, height: 130, background: "rgba(0,0,0,0.25)", display: "flex" }} />
-        {/* 封面中心星（菱形几何） */}
-        <div style={{
-          position: "absolute",
-          left: 31,
-          top: 76,
-          width: 18,
-          height: 18,
-          background: "rgba(255,255,255,0.75)",
-          display: "flex",
-          transform: "rotate(45deg)",
-        }} />
-        <div style={{
-          position: "absolute",
-          left: 35,
-          top: 80,
-          width: 10,
-          height: 10,
-          background: "rgba(255,255,255,0.95)",
-          display: "flex",
-          transform: "rotate(45deg)",
-        }} />
+
+        {/* 环境星光点 */}
+        <div style={{ position: "absolute", left: 119, top: 53, width: 2.5, height: 2.5, background: "#a0a8c8", borderRadius: "50%", opacity: 0.35, display: "flex" }} />
+        <div style={{ position: "absolute", left: 53, top: 63, width: 1.8, height: 1.8, background: "#b0a890", borderRadius: "50%", opacity: 0.25, display: "flex" }} />
+        <div style={{ position: "absolute", left: 133, top: 119, width: 2, height: 2, background: "#c0b098", borderRadius: "50%", opacity: 0.2, display: "flex" }} />
+        <div style={{ position: "absolute", left: 42, top: 123, width: 1.5, height: 1.5, background: "#a0a0c0", borderRadius: "50%", opacity: 0.2, display: "flex" }} />
+        <div style={{ position: "absolute", left: 126, top: 39, width: 1.5, height: 1.5, background: "#b8b0c0", borderRadius: "50%", opacity: 0.18, display: "flex" }} />
+        <div style={{ position: "absolute", left: 60, top: 133, width: 2, height: 2, background: "#a8a0b0", borderRadius: "50%", opacity: 0.15, display: "flex" }} />
+        <div style={{ position: "absolute", left: 105, top: 137, width: 1.2, height: 1.2, background: "#c0a888", borderRadius: "50%", opacity: 0.18, display: "flex" }} />
+
+        {/* 星星（偏左上，微旋转-6度） */}
+        {/* 中心点约 (80, 86)，缩放比例 180/512 ≈ 0.3515625 */}
+        <div
+          style={{
+            position: "absolute",
+            left: 80,
+            top: 86,
+            transform: "translate(-50%, -50%) rotate(-6deg)",
+            display: "flex",
+          }}
+        >
+          {/* 星的光晕（模糊效果） */}
+          <div
+            style={{
+              position: "absolute",
+              left: -12,
+              top: -12,
+              width: 24,
+              height: 24,
+              background: "#c8a96e",
+              opacity: 0.2,
+              filter: "blur(3px)",
+              clipPath: "polygon(50% 0%, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0% 50%, 40% 40%)",
+              display: "flex",
+            }}
+          />
+          {/* 星本体 */}
+          <div
+            style={{
+              position: "absolute",
+              left: -9,
+              top: -9,
+              width: 18,
+              height: 18,
+              background: "#c8a96e",
+              clipPath: "polygon(50% 0%, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0% 50%, 40% 40%)",
+              display: "flex",
+            }}
+          />
+          {/* 亮核 */}
+          <div
+            style={{
+              position: "absolute",
+              left: -2,
+              top: -2,
+              width: 4,
+              height: 4,
+              borderRadius: "50%",
+              background: "#dabb7a",
+              opacity: 0.95,
+              display: "flex",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              left: -1,
+              top: -1,
+              width: 2,
+              height: 2,
+              borderRadius: "50%",
+              background: "#eee0b8",
+              display: "flex",
+            }}
+          />
+        </div>
       </div>
     ),
     { ...size }

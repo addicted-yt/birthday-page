@@ -25,12 +25,12 @@ export function HeroSection() {
           <motion.span
             className="font-light text-white"
             animate={{
-              opacity: [1, 1.0, 0.75, 1],
+              opacity: [1, 0.82, 1],
             }}
             transition={{
               delay: 0.5,
-              duration: 1.2,
-              times: [0, 0.3, 0.7, 1],
+              duration: 2.8,
+              times: [0, 0.5, 1],
               ease: "easeInOut",
             }}
           >
@@ -44,7 +44,7 @@ export function HeroSection() {
           animate={{ opacity: 1 }}
           transition={{ ...springGentle, delay: 0.7 }}
         >
-          可定制 · 可分享 · 沉浸式体验
+          写一段话 · 选几张照片 · 剩下的交给星光
         </motion.p>
         <motion.p
           className="text-xs md:text-sm tracking-[0.2em]"

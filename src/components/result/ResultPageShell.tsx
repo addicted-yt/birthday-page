@@ -737,7 +737,7 @@ export function ResultPageShell({
               // 已永久保存：替换 15 天提示
               <>
                 <span style={{ fontSize: "clamp(0.6rem, 1.2vw, 0.72rem)", letterSpacing: "0.12em", color: "rgba(255,255,255,0.28)" }}>
-                  此页面已被创作者永久保存，也可以
+                  这份祝福已被创作者永久珍藏，你也可以
                 </span>
                 <motion.button
                   onClick={handleTakeSnapshot}
@@ -758,14 +758,14 @@ export function ResultPageShell({
                   {screenshotLoading ? "截图中…" : "保存长图"}
                 </motion.button>
                 <span style={{ fontSize: "clamp(0.6rem, 1.2vw, 0.72rem)", letterSpacing: "0.12em", color: "rgba(255,255,255,0.28)" }}>
-                  留念
+                  留住此刻
                 </span>
               </>
             ) : (
               // 未永久保存：原 15 天提示
               <>
                 <span style={{ fontSize: "clamp(0.6rem, 1.2vw, 0.72rem)", letterSpacing: "0.12em", color: "rgba(255,255,255,0.28)" }}>
-                  因云端数据库容量限制，页面数据将于 15 天内自动删除，可以
+                  这份祝福会陪伴你 15 天，你可以
                 </span>
                 <motion.button
                   onClick={handleTakeSnapshot}
@@ -786,7 +786,7 @@ export function ResultPageShell({
                   {screenshotLoading ? "截图中…" : "保存长图"}
                 </motion.button>
                 <span style={{ fontSize: "clamp(0.6rem, 1.2vw, 0.72rem)", letterSpacing: "0.12em", color: "rgba(255,255,255,0.28)" }}>
-                  留念
+                  留住此刻
                 </span>
               </>
             )}

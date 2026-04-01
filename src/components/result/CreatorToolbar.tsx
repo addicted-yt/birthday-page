@@ -186,8 +186,7 @@ export function CreatorToolbar({ shareUrl, sessionId, onNavigateAway, onTakeSnap
                 快分享给 TA 看看吧 ✨
               </p>
               <p style={{ fontSize: "0.65rem", color: "rgba(255,255,255,0.50)", letterSpacing: "0.06em", marginTop: "6px", textAlign: "center", lineHeight: 1.7 }}>
-                图片将在 15 天后从云端自动清除<br />
-                请尽快分享，以免 TA 错过<br />
+                这份祝福会在云端保留 15 天，记得及时把链接发给 TA 💌<br />
                 <motion.button
                   onClick={() => { setShowToast(false); onTakeSnapshot?.(); }}
                   disabled={snapshotLoading}

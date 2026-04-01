@@ -3,8 +3,14 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://thesedays.cn"),
-  title: "送给TA的一份特别祝福",
-  description: "可定制 · 可分享 · 沉浸式体验",
+  title: "星愿 — 送给TA的一份特别祝福",
+  description: "写一段话 · 选几张照片 · 剩下的交给星光",
+  applicationName: "星愿",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "星愿",
+  },
 };
 
 export default function RootLayout({
