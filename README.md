@@ -1,4 +1,4 @@
-﻿# 🎂 [thesedays](http://thesedays.cn)--Birthday Page
+﻿# 🎉 [thesedays](http://thesedays.cn)  ·  星 愿
 
 > **有些话说不出口，就让代码替你表达 💫**
 >
@@ -23,10 +23,11 @@
   一份沉浸式生日体验 —— 可定制 · 可分享 · 感动每一刻 
 </p>
 <p align="center">
-  用几分钟为 TA 制作一份专属祝福：上传照片、写下心里话，生成一段浪漫的星空动画贺卡，通过链接分享给重要的人。
+  用几分钟为 TA 制作一份专属祝福：上传照片、写下心里话，生成一段浪漫的星空动画贺卡，通过链接分享给重要的人。 <br/>
+    写一段话 · 选几张照片 · 剩下的交给星光
 </p>
 <p align="center">
-  <a href="https://thesedays.cn/">🌐 免费在线使用</a> · <a href="https://happy-birthday.65751062.workers.dev/">☁️ 备用链接</a>
+  <a href="https://thesedays.cn/">🌐 免费在线使用</a> · <a href="https://happy-birthday.65751062.workers.dev/">☁️ 备用链接-cloudflare</a>
   <br />
   <span style="font-size:12px;color:#888;">⚠️ 国内访问备用链接可能需要科学上网 · 推荐使用电脑端体验，移动端不断优化中</span>
 </p>
@@ -59,6 +60,7 @@
 - **🔢 数量自动截断** — 卡片照片最多 5 张，礼物照片最多 3 张，超出数量会自动截断
 - **💌 自动上推的信** — 信件字幕会像歌词一样自动上推，情绪节奏更完整
 - **🖼️ 社交分享封面** — 结果页支持 Open Graph / Twitter 分享图预览，更适合在微信和社交平台传播
+- **📲 PWA 支持** — 新增 Web App Manifest，支持"添加到主屏幕"，主题色与图标风格统一
 
 ---
 
@@ -75,6 +77,7 @@
 | [react-easy-crop](https://github.com/ricardo-ch/react-easy-crop) | 图片裁剪 |
 | [Cloudflare R2](https://developers.cloudflare.com/r2/) | 图片云存储 |
 | [IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API) | 本地图片缓存 |
+| [Web App Manifest](https://developer.mozilla.org/en-US/docs/Web/Manifest) | PWA 主屏幕支持 |
 
 ---
 
