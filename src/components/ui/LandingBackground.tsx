@@ -98,7 +98,7 @@ export function LandingBackground() {
         { cx:0.82, cy:0.58, r:0.28, c:`rgba(100,55,165,${breathe*0.9})` },
         { cx:0.50, cy:0.50, r:0.40, c:`rgba(30,60,150,${breathe*0.6})` },
         { cx:0.65, cy:0.20, r:0.20, c:`rgba(80,120,220,${breathe*0.7})` },
-        { cx:0.22, cy:0.72, r:0.25, c:`rgba(180,140,60,${breathe*0.8})` },
+        { cx:0.22, cy:0.72, r:0.32, c:`rgba(180,140,60,${breathe*3.5})` },
       ];
       for (const h of halos) {
         const halo = ctx.createRadialGradient(canvas.width*h.cx, canvas.height*h.cy, 0, canvas.width*h.cx, canvas.height*h.cy, canvas.width*h.r);

@@ -54,72 +54,32 @@ export default function AppleIcon() {
         <div style={{ position: "absolute", left: 60, top: 133, width: 2, height: 2, background: "#a8a0b0", borderRadius: "50%", opacity: 0.15, display: "flex" }} />
         <div style={{ position: "absolute", left: 105, top: 137, width: 1.2, height: 1.2, background: "#c0a888", borderRadius: "50%", opacity: 0.18, display: "flex" }} />
 
-        {/* 星星（偏左上，微旋转-6度） */}
-        {/* 中心点约 (80, 86)，缩放比例 180/512 ≈ 0.3515625 */}
-        <div
-          style={{
-            position: "absolute",
-            left: 80,
-            top: 86,
-            transform: "translate(-50%, -50%) rotate(-6deg)",
-            display: "flex",
-          }}
+        {/* 星星（偏左上，微旋转-6度，用内嵌SVG确保Satori兼容） */}
+        {/* icon.svg中星星中心(228,244)，缩放比 180/512=0.352，中心映射到(80,86) */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <svg
+          width="180"
+          height="180"
+          viewBox="0 0 180 180"
+          style={{ position: "absolute", left: 0, top: 0 }}
         >
-          {/* 星的光晕（模糊效果） */}
-          <div
-            style={{
-              position: "absolute",
-              left: -12,
-              top: -12,
-              width: 24,
-              height: 24,
-              background: "#c8a96e",
-              opacity: 0.2,
-              filter: "blur(3px)",
-              clipPath: "polygon(50% 0%, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0% 50%, 40% 40%)",
-              display: "flex",
-            }}
-          />
-          {/* 星本体 */}
-          <div
-            style={{
-              position: "absolute",
-              left: -9,
-              top: -9,
-              width: 18,
-              height: 18,
-              background: "#c8a96e",
-              clipPath: "polygon(50% 0%, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0% 50%, 40% 40%)",
-              display: "flex",
-            }}
-          />
-          {/* 亮核 */}
-          <div
-            style={{
-              position: "absolute",
-              left: -2,
-              top: -2,
-              width: 4,
-              height: 4,
-              borderRadius: "50%",
-              background: "#dabb7a",
-              opacity: 0.95,
-              display: "flex",
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              left: -1,
-              top: -1,
-              width: 2,
-              height: 2,
-              borderRadius: "50%",
-              background: "#eee0b8",
-              display: "flex",
-            }}
-          />
-        </div>
+          <g transform="rotate(-6, 80, 86)">
+            {/* 星光晕 */}
+            <polygon
+              points="80,62 82.5,78 98,86 82.5,94 80,110 77.5,94 62,86 77.5,78"
+              fill="#c8a96e"
+              opacity="0.2"
+            />
+            {/* 星本体 */}
+            <polygon
+              points="80,67 82,79 94,86 82,93 80,105 78,93 66,86 78,79"
+              fill="#c8a96e"
+            />
+            {/* 亮核 */}
+            <circle cx="80" cy="86" r="4" fill="#dabb7a" opacity="0.95"/>
+            <circle cx="80" cy="86" r="2" fill="#eee0b8"/>
+          </g>
+        </svg>
       </div>
     ),
     { ...size }

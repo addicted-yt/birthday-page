@@ -24,6 +24,7 @@ export function HeroSection() {
           送给
           <motion.span
             className="font-light text-white"
+            variants={{}}
             initial={{ opacity: 1 }}
             animate={{
               opacity: [1, 0.82, 1],

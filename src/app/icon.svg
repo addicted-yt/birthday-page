@@ -5,12 +5,12 @@
       <stop offset="100%" stop-color="#090c18"/>
     </radialGradient>
     <radialGradient id="d1glow512" cx="55%" cy="62%" r="40%">
-      <stop offset="0%" stop-color="rgba(190,150,70,0.16)"/>
-      <stop offset="60%" stop-color="rgba(190,150,70,0.04)"/>
+      <stop offset="0%" stop-color="rgba(190,150,70,0.38)"/>
+      <stop offset="60%" stop-color="rgba(190,150,70,0.10)"/>
       <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
     </radialGradient>
     <radialGradient id="d1core512" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="rgba(210,175,90,0.12)"/>
+      <stop offset="0%" stop-color="rgba(210,175,90,0.22)"/>
       <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
     </radialGradient>
     <filter id="d1blur512" x="-50%" y="-50%" width="200%" height="200%">
@@ -34,11 +34,11 @@
     <circle cx="228" cy="244" r="6" fill="#eee0b8"/>
   </g>
   <!-- 环境星光点（极淡，增加层次） -->
-  <circle cx="340" cy="150" r="2.5" fill="#a0a8c8" opacity="0.35"/>
-  <circle cx="150" cy="180" r="1.8" fill="#b0a890" opacity="0.25"/>
-  <circle cx="380" cy="340" r="2" fill="#c0b098" opacity="0.2"/>
-  <circle cx="120" cy="350" r="1.5" fill="#a0a0c0" opacity="0.2"/>
-  <circle cx="360" cy="110" r="1.5" fill="#b8b0c0" opacity="0.18"/>
-  <circle cx="170" cy="380" r="2" fill="#a8a0b0" opacity="0.15"/>
-  <circle cx="300" cy="390" r="1.2" fill="#c0a888" opacity="0.18"/>
+  <circle cx="340" cy="150" r="2.5" fill="#a0a8c8" opacity="0.65"/>
+  <circle cx="150" cy="180" r="1.8" fill="#b0a890" opacity="0.55"/>
+  <circle cx="380" cy="340" r="2" fill="#c0b098" opacity="0.50"/>
+  <circle cx="120" cy="350" r="1.5" fill="#a0a0c0" opacity="0.48"/>
+  <circle cx="360" cy="110" r="1.5" fill="#b8b0c0" opacity="0.45"/>
+  <circle cx="170" cy="380" r="2" fill="#a8a0b0" opacity="0.42"/>
+  <circle cx="300" cy="390" r="1.2" fill="#c0a888" opacity="0.45"/>
 </svg>
