@@ -33,7 +33,10 @@ export function LandingBackground() {
     resize();
     window.addEventListener("resize", resize);
 
-    for (let i = 0; i < 280; i++) {
+    // 根据屏幕面积动态计算冷色星星数量（手机~165，平板~200，桌面280，超大屏345）
+    const coldCount = Math.floor(150 + 130 * Math.min(1.5, (window.innerWidth * window.innerHeight) / (1920 * 1080)));
+
+    for (let i = 0; i < coldCount; i++) {
       const bright = Math.random() < 0.15;
       const big = Math.random() < 0.06;
       stars.push({
