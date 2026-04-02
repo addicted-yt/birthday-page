@@ -65,7 +65,7 @@ export function Step6Music({ customAudio, onChange, onNext, onBack, showGoToStep
       stopPreview();
       return;
     }
-    // 切换到另一首
+    // 先停止当前播放
     stopPreview();
     const track = getTrack(trackId);
     // 优先用已上传的 dataUrl（本设备），其次用 audioKey 代理，否则用默认
@@ -76,8 +76,13 @@ export function Step6Music({ customAudio, onChange, onNext, onBack, showGoToStep
     const audio = new Audio(src);
     audioRef.current = audio;
     audio.onended = () => setPlayingId(null);
-    audio.play().catch(() => setPlayingId(null));
-    setPlayingId(trackId);
+    // play() 成功后才更新状态，避免静默失败时 UI 显示播放中但无声音
+    audio.play().then(() => {
+      setPlayingId(trackId);
+    }).catch(() => {
+      audioRef.current = null;
+      setPlayingId(null);
+    });
   };
 
   // 上传文件
