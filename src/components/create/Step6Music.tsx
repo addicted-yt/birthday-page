@@ -52,15 +52,15 @@ export function Step6Music({ customAudio, onChange, onNext, onBack, showGoToStep
     };
   }, [stopPreview]);
 
-  const getTrack = (trackId: string) => customAudio.find(a => a.trackId === trackId);
+  const getTrack = (trackId: "birthday" | "gift") => customAudio.find(a => a.trackId === trackId);
 
-  const showError = (trackId: string, msg: string) => {
+  const showError = (trackId: "birthday" | "gift", msg: string) => {
     setErrors(prev => ({ ...prev, [trackId]: msg }));
     setTimeout(() => setErrors(prev => { const n = { ...prev }; delete n[trackId]; return n; }), 3000);
   };
 
   // 试听切换
-  const handleTogglePreview = (trackId: string, defaultSrc: string) => {
+  const handleTogglePreview = (trackId: "birthday" | "gift", defaultSrc: string) => {
     if (playingId === trackId) {
       stopPreview();
       return;
@@ -81,7 +81,7 @@ export function Step6Music({ customAudio, onChange, onNext, onBack, showGoToStep
   };
 
   // 上传文件
-  const handleFileChange = async (trackId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (trackId: "birthday" | "gift", e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
@@ -131,13 +131,13 @@ export function Step6Music({ customAudio, onChange, onNext, onBack, showGoToStep
   };
 
   // 恢复默认
-  const handleRestore = (trackId: string) => {
+  const handleRestore = (trackId: "birthday" | "gift") => {
     stopPreview();
     onChange(customAudio.filter(a => a.trackId !== trackId));
   };
 
   // 重新上传：清除旧 key，触发 file input
-  const handleReupload = (trackId: string) => {
+  const handleReupload = (trackId: "birthday" | "gift") => {
     stopPreview();
     onChange(customAudio.filter(a => a.trackId !== trackId));
     setTimeout(() => fileInputRefs.current[trackId]?.click(), 50);
