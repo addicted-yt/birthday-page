@@ -126,10 +126,14 @@ export function StepFlow({ restoreSid }: { restoreSid?: string | null }) {
     // 上传自定义音频（已有 audioKey 则跳过，dataUrl 存在则上传）
     const customAudio = await Promise.all(
       (state.customAudio ?? []).map(async (track) => {
-        if (track.audioKey) return track; // 已上传过
+        if (track.audioKey) {
+          // 已上传过，strip dataUrl 避免 session/save 超出大小限制
+          const { dataUrl: _, ...rest } = track;
+          return rest;
+        }
         if (!track.dataUrl) return track; // 无数据，跳过
         const audioKey = await uploadAudioToR2(track.dataUrl);
-        // strip dataUrl，只保留 key（dataUrl 太大，不放进 BirthdayData）
+        // strip dataUrl，只保留 key
         const { dataUrl: _removed, ...rest } = track;
         return { ...rest, audioKey };
       })
