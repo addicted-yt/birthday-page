@@ -4,9 +4,10 @@ import { springGentle } from "@/lib/animationPresets";
 
 interface Scene0CurtainProps {
   onStart: () => void;
+  isLoading?: boolean;
 }
 
-export function Scene0Curtain({ onStart }: Scene0CurtainProps) {
+export function Scene0Curtain({ onStart, isLoading = false }: Scene0CurtainProps) {
   return (
     <motion.div
       key="curtain"
@@ -89,22 +90,26 @@ export function Scene0Curtain({ onStart }: Scene0CurtainProps) {
           border: "1px solid rgba(255,255,255,0.22)",
           borderRadius: "999px",
           padding: "clamp(0.6rem, 2vw, 0.8rem) clamp(1.8rem, 5vw, 2.8rem)",
-          cursor: "pointer",
+          cursor: isLoading ? "wait" : "pointer",
           backdropFilter: "blur(8px)",
           WebkitBackdropFilter: "blur(8px)",
+          opacity: isLoading ? 0.6 : 1,
         }}
         initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
+        animate={{ opacity: isLoading ? 0.6 : 1, y: 0 }}
         transition={{ ...springGentle, delay: 0.7 }}
-        whileHover={{
+        whileHover={!isLoading ? {
           background: "rgba(255,255,255,0.07)",
           borderColor: "rgba(255,255,255,0.38)",
           color: "rgba(255,255,255,0.95)",
+        } : {}}
+        whileTap={!isLoading ? { scale: 0.95 } : {}}
+        onClick={() => {
+          if (!isLoading) onStart();
         }}
-        whileTap={{ scale: 0.95 }}
-        onClick={onStart}
+        disabled={isLoading}
       >
-        启幕
+        {isLoading ? "加载中…" : "启幕"}
       </motion.button>
 
       {/* 底部装饰线 */}

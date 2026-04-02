@@ -81,6 +81,10 @@ export function ResultPageShell({
   );
   const [decodeError] = useState(Boolean(!propData && encodedData && !decodedFromUrl && !remoteSessionId));
 
+  const [isLoadingSession, setIsLoadingSession] = useState(
+    Boolean(!propData && !decodedFromUrl && remoteSessionId)
+  );
+
   // 优先从服务端按 remoteSessionId 拉取完整数据
   useEffect(() => {
     if (propData || decodedFromUrl || !remoteSessionId) return;
@@ -97,6 +101,9 @@ export function ResultPageShell({
       .catch(() => {
         // 服务端拉取失败，降级到 d= 参数（旧链接兼容）
         // 如果 d= 也没有，则保持空壳（只有名字）
+      })
+      .finally(() => {
+        setIsLoadingSession(false);
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -208,8 +215,17 @@ export function ResultPageShell({
   const { cancel: cancelFirstInteraction } = useFirstInteraction(
     useCallback(() => {
       birthdaySong.unlock();
-    }, [birthdaySong])
+      pianoMusic.unlock();
+    }, [birthdaySong, pianoMusic])
   );
+
+  // 当 src 动态变化（如 data 异步加载完成）时，主动触发一次 unlock（此时通常仍在用户点击流程内）
+  useEffect(() => {
+    if (isCreator) {
+      birthdaySong.unlock();
+      pianoMusic.unlock();
+    }
+  }, [effectiveBirthdaySrc, effectiveGiftSrc, isCreator, birthdaySong, pianoMusic]);
 
   useEffect(() => {
     if (!data) return;
@@ -562,7 +578,7 @@ export function ResultPageShell({
       </AnimatePresence>
 
       <AnimatePresence onExitComplete={() => setCurtainDone(true)}>
-        {showCurtain && <Scene0Curtain onStart={handleCurtainStart} />}
+        {showCurtain && <Scene0Curtain onStart={handleCurtainStart} isLoading={isLoadingSession} />}
       </AnimatePresence>
 
       {curtainDone && showHomeButton && (

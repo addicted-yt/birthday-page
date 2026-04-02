@@ -53,6 +53,7 @@ export function useAudioPlayer(src: string) {
   // src 变化时重置 audioRef，下次 getAudio 创建新 Audio 实例
   useEffect(() => {
     audioRef.current = null;
+    unlockedRef.current = false;
   }, [src]);
 
   // 移动端首次用户手势时调用，静默 play/pause 解锁 iOS 音频限制
