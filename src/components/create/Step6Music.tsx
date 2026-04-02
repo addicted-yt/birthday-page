@@ -86,12 +86,16 @@ export function Step6Music({ customAudio, onChange, onNext, onBack, showGoToStep
     e.target.value = "";
     if (!file) return;
 
-    if (file.type !== "audio/mpeg" && !file.name.toLowerCase().endsWith(".mp3")) {
-      showError(trackId, "仅支持 mp3 格式");
+    if (file.type !== "audio/mpeg" && file.type !== "audio/mp4" && file.type !== "audio/x-m4a" &&
+        !file.name.toLowerCase().endsWith(".mp3") && !file.name.toLowerCase().endsWith(".m4a")) {
+      showError(trackId, "仅支持 mp3、m4a 格式");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      showError(trackId, "文件超过 5MB 限制");
+    // 累计大小校验：两首合计不超过 10MB
+    const otherTrack = customAudio.find(a => a.trackId !== trackId);
+    const otherSize = otherTrack?.dataUrl ? (otherTrack.dataUrl.length * 3) / 4 : 0;
+    if (otherSize + file.size > 10 * 1024 * 1024) {
+      showError(trackId, "两首音乐合计超过 10MB 限制");
       return;
     }
 
@@ -157,7 +161,7 @@ export function Step6Music({ customAudio, onChange, onNext, onBack, showGoToStep
           可选 · 替换默认音乐为你们的歌
         </p>
         <p className="text-xs mt-1 tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>
-          仅支持 mp3 · 每首不超过 5MB · 跳过则使用默认音乐
+          支持 mp3、m4a · 一共不超过 10MB · 跳过则使用默认音乐
         </p>
       </div>
 
@@ -228,7 +232,7 @@ export function Step6Music({ customAudio, onChange, onNext, onBack, showGoToStep
                   <input
                     ref={el => { fileInputRefs.current[trackId] = el; }}
                     type="file"
-                    accept=".mp3,audio/mpeg"
+                    accept=".mp3,.m4a,audio/mpeg,audio/mp4,audio/x-m4a"
                     className="hidden"
                     onChange={e => handleFileChange(trackId, e)}
                   />
@@ -239,7 +243,7 @@ export function Step6Music({ customAudio, onChange, onNext, onBack, showGoToStep
                   <input
                     ref={el => { fileInputRefs.current[trackId] = el; }}
                     type="file"
-                    accept=".mp3,audio/mpeg"
+                    accept=".mp3,.m4a,audio/mpeg,audio/mp4,audio/x-m4a"
                     className="hidden"
                     onChange={e => handleFileChange(trackId, e)}
                   />

@@ -100,8 +100,8 @@ export async function uploadImageToR2(dataUrl: string): Promise<string> {
 export async function uploadAudioToR2(dataUrl: string): Promise<string> {
   // 前端预检：base64 字符数 × 0.75 ≈ 字节数
   const byteSize = (dataUrl.length * 3) / 4;
-  if (byteSize > 5 * 1024 * 1024) {
-    throw new Error("音频超过 5MB 限制，请选择更小的文件");
+  if (byteSize > 10 * 1024 * 1024) {
+    throw new Error("音频超过 10MB 限制，请选择更小的文件");
   }
 
   const res = await fetch("/api/audio/upload", {

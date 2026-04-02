@@ -38,7 +38,7 @@ function isAllowedOrigin(origin: string | null): boolean {
   return ALLOWED_ORIGINS.has(origin);
 }
 
-const MAX_BYTES = 5 * 1024 * 1024; // 5MB
+const MAX_BYTES = 10 * 1024 * 1024; // 10MB（两首合计上限，单首也不超过此值）
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const origin = req.headers.get("origin");
@@ -53,14 +53,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: "缺少音频数据" }, { status: 400 });
     }
 
-    if (!dataUrl.startsWith("data:audio/mpeg")) {
-      return NextResponse.json({ error: "仅支持 mp3 格式" }, { status: 400 });
+    if (!dataUrl.startsWith("data:audio/mpeg") && !dataUrl.startsWith("data:audio/mp4") && !dataUrl.startsWith("data:audio/x-m4a")) {
+      return NextResponse.json({ error: "仅支持 mp3、m4a 格式" }, { status: 400 });
     }
 
     // 大小校验（base64 长度 × 0.75 ≈ 字节数）
     const approxBytes = (dataUrl.length * 3) / 4;
     if (approxBytes > MAX_BYTES) {
-      return NextResponse.json({ error: "音频超过 5MB 限制" }, { status: 413 });
+      return NextResponse.json({ error: "音频超过 10MB 限制" }, { status: 413 });
     }
 
     const [, base64] = dataUrl.split(",");
