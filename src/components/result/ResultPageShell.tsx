@@ -124,15 +124,13 @@ export function ResultPageShell({
     const track = data?.customAudio?.find((a) => a.trackId === "birthday");
     if (track?.audioKey) return `/api/audio/${track.audioKey}`;
     return "/audio/birthday-song.mp3";
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data?.customAudio?.find?.((a) => a.trackId === "birthday")?.audioKey]);
+  }, [data?.customAudio]);
 
   const effectiveGiftSrc = useMemo(() => {
     const track = data?.customAudio?.find((a) => a.trackId === "gift");
     if (track?.audioKey) return `/api/audio/${track.audioKey}`;
     return "/audio/gift-bgm.mp3";
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data?.customAudio?.find?.((a) => a.trackId === "gift")?.audioKey]);
+  }, [data?.customAudio]);
 
   const birthdaySong = useAudioPlayer(effectiveBirthdaySrc);
   const pianoMusic = useAudioPlayer(effectiveGiftSrc);
