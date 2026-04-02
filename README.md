@@ -53,7 +53,7 @@
 - **📐 一键截长图** — 分享弹窗内支持将播放页截长图保存为图片，不依赖链接也能留存
 - **💬 意见反馈** — 页面底部内置反馈入口，一键发送邮件反馈
 - **🔗 一键分享** — 生成链接发给 TA，无需登录即可查看
-- **☁️ 云存储** — 云端保存图片（云端15天自动删除），分享链接永久有效；本地使用 IndexedDB 缓存加速加载
+- **☁️ 云存储** — 云端保存图片和音频（云端15天自动删除），分享链接需要在15天内尽快分享；本地使用 IndexedDB 缓存加速加载
 - **🛠️ 创作者工具栏** — 预览页面浮动工具栏，支持继续编辑和快速分享
 - **🎬 演示页面** — 内置完整 Demo，无需制作即可预览全部效果
 - **📱 响应式设计** — 手机、平板、电脑完美适配 
@@ -75,7 +75,7 @@
 | [Framer Motion](https://www.framer.com/motion/) | 动画引擎 |
 | [lz-string](https://github.com/pieroxy/lz-string) | URL 数据压缩 |
 | [react-easy-crop](https://github.com/ricardo-ch/react-easy-crop) | 图片裁剪 |
-| [Cloudflare R2](https://developers.cloudflare.com/r2/) | 图片 & 音频云存储（15天自动删除） |
+| [Cloudflare R2](https://developers.cloudflare.com/r2/) | 云存储 |
 | [IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API) | 本地图片缓存 |
 | [Web App Manifest](https://developer.mozilla.org/en-US/docs/Web/Manifest) | PWA 主屏幕支持 |
 
