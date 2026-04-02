@@ -40,6 +40,12 @@ export function encodeBirthdayData(data: BirthdayData): {
     giftImages: data.giftImages.map((g) => ({ imageKey: g.imageKey })),
     placeholderPhrases: data.placeholderPhrases,
     placeholderStyles: data.placeholderStyles,
+    // 音频只存 trackId/audioKey/fileName，不含 dataUrl
+    customAudio: data.customAudio?.map((a) => ({
+      trackId: a.trackId,
+      audioKey: a.audioKey,
+      fileName: a.fileName,
+    })),
   };
 
   const d = LZString.compressToEncodedURIComponent(JSON.stringify(textData));
@@ -109,5 +115,6 @@ export function decodeBirthdayData(
     placeholderStyles: textData.placeholderStyles,
     cardPhotos,
     giftImages,
+    customAudio: (textData as { customAudio?: BirthdayData["customAudio"] }).customAudio,
   };
 }

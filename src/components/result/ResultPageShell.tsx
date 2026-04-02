@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef, useCallback, type ReactNode } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
@@ -119,8 +119,23 @@ export function ResultPageShell({
   // 信件→礼物图场景切换遮罩
   const [letterTransitioning, setLetterTransitioning] = useState(false);
 
-  const birthdaySong = useAudioPlayer("/audio/birthday-song.mp3");
-  const pianoMusic = useAudioPlayer("/audio/gift-bgm.mp3");
+  // 根据 customAudio 决定音频 src（有自定义 key 则走代理，否则用默认）
+  const effectiveBirthdaySrc = useMemo(() => {
+    const track = data?.customAudio?.find((a) => a.trackId === "birthday");
+    if (track?.audioKey) return `/api/audio/${track.audioKey}`;
+    return "/audio/birthday-song.mp3";
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.customAudio?.find?.((a) => a.trackId === "birthday")?.audioKey]);
+
+  const effectiveGiftSrc = useMemo(() => {
+    const track = data?.customAudio?.find((a) => a.trackId === "gift");
+    if (track?.audioKey) return `/api/audio/${track.audioKey}`;
+    return "/audio/gift-bgm.mp3";
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.customAudio?.find?.((a) => a.trackId === "gift")?.audioKey]);
+
+  const birthdaySong = useAudioPlayer(effectiveBirthdaySrc);
+  const pianoMusic = useAudioPlayer(effectiveGiftSrc);
 
   const birthdaySongStarted = useRef(false);
   const birthdayFadePromiseRef = useRef<Promise<void> | null>(null);

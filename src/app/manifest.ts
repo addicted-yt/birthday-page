@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "星愿 — 送给TA的一份特别祝福",
     short_name: "星愿",
-    description: "写一段话 · 选几张照片 · 剩下的交给星光",
+    description: "写一段话 · 选几张照片 · 配一首歌 · 剩下的交给星光",
     start_url: "/",
     display: "standalone",
     background_color: "#080c18",

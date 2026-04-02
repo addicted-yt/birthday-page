@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import { CreateFlowState, CreateStep, BirthdayData } from "@/types/birthday";
 import { springGentle } from "@/lib/animationPresets";
 import { encodeBirthdayData } from "@/lib/urlEncoding";
-import { idbPut, uploadImageToR2 } from "@/lib/imageStorage";
+import { idbPut, uploadImageToR2, uploadAudioToR2 } from "@/lib/imageStorage";
 import { BrandFooter } from "@/components/landing/BrandFooter";
 import { PageTransitionOverlay } from "@/components/ui/PageTransitionOverlay";
 import { Step1Name } from "./Step1Name";
@@ -14,7 +14,8 @@ import { Step2Photos } from "./Step2Photos";
 import { Step3CardText } from "./Step3CardText";
 import { Step4GiftLetter } from "./Step4GiftLetter";
 import { Step5GiftImages } from "./Step5GiftImages";
-import { Step6Preview } from "./Step6Preview";
+import { Step6Music } from "./Step6Music";
+import { Step7Preview } from "./Step7Preview";
 
 const SubtleBackground = dynamic(
   () => import("@/components/ui/SubtleBackground").then((m) => m.SubtleBackground),
@@ -31,7 +32,7 @@ const DEFAULT_LETTER = `谢谢你来到这个世界
 有梦想
 有爱`;
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 7;
 
 function restoreStateFromSid(sid: string): CreateFlowState | null {
   try {
@@ -39,7 +40,7 @@ function restoreStateFromSid(sid: string): CreateFlowState | null {
     if (!stored) return null;
     const data = JSON.parse(stored) as BirthdayData;
     return {
-      step: 6,
+      step: 7,
       name: data.name,
       cardPhotos: data.cardPhotos,
       giftLetter: data.giftLetter,
@@ -47,6 +48,7 @@ function restoreStateFromSid(sid: string): CreateFlowState | null {
       giftImages: data.giftImages,
       placeholderPhrases: data.placeholderPhrases,
       placeholderStyles: data.placeholderStyles,
+      customAudio: data.customAudio,
     };
   } catch {
     return null;
@@ -62,11 +64,12 @@ export function StepFlow({ restoreSid }: { restoreSid?: string | null }) {
     cardPhotos: [],
     giftLetter: DEFAULT_LETTER,
     giftImages: [],
+    customAudio: [],
   });
 
-  // 是否曾经到达过 step6（包括从预览页返回的情况）
+  // 是否曾经到达过 step7（包括从预览页返回的情况）
   const hasReachedPreview = useRef(false);
-  if (state.step === 6) hasReachedPreview.current = true;
+  if (state.step === 7) hasReachedPreview.current = true;
 
   // 客户端挂载后再从 sessionStorage 恢复，避免 SSR/客户端 hydration 不匹配
   useEffect(() => {
@@ -90,10 +93,14 @@ export function StepFlow({ restoreSid }: { restoreSid?: string | null }) {
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   /**
-   * 上传所有图片到 R2 + IndexedDB，返回带 imageKey 的数据
-   * 任意一张上传失败则抛出错误，阻止生成分享链接（不静默降级）
+   * 上传所有图片和音频到 R2，返回带 key 的数据
+   * 任意一项上传失败则抛出错误，阻止生成分享链接（不静默降级）
    */
-  const prepareImages = async (): Promise<{ cardPhotos: typeof state.cardPhotos; giftImages: typeof state.giftImages }> => {
+  const prepareMedia = async (): Promise<{
+    cardPhotos: typeof state.cardPhotos;
+    giftImages: typeof state.giftImages;
+    customAudio: typeof state.customAudio;
+  }> => {
     const cardPhotos = await Promise.all(
       state.cardPhotos.map(async (p) => {
         if (!p.dataUrl) return p;
@@ -116,14 +123,25 @@ export function StepFlow({ restoreSid }: { restoreSid?: string | null }) {
         return { ...g, imageKey };
       })
     );
-    return { cardPhotos, giftImages };
+    // 上传自定义音频（已有 audioKey 则跳过，dataUrl 存在则上传）
+    const customAudio = await Promise.all(
+      (state.customAudio ?? []).map(async (track) => {
+        if (track.audioKey) return track; // 已上传过
+        if (!track.dataUrl) return track; // 无数据，跳过
+        const audioKey = await uploadAudioToR2(track.dataUrl);
+        // strip dataUrl，只保留 key（dataUrl 太大，不放进 BirthdayData）
+        const { dataUrl: _removed, ...rest } = track;
+        return { ...rest, audioKey };
+      })
+    );
+    return { cardPhotos, giftImages, customAudio };
   };
 
   const handlePreview = async () => {
     setUploading(true);
     setUploadError(null);
     try {
-      const { cardPhotos, giftImages } = await prepareImages();
+      const { cardPhotos, giftImages, customAudio } = await prepareMedia();
 
       // 把完整 BirthdayData 存到 R2，分享链接只传短 sid，避免 URL 过长导致微信无法识别
       const birthdayData: BirthdayData = {
@@ -135,6 +153,7 @@ export function StepFlow({ restoreSid }: { restoreSid?: string | null }) {
         giftImages,
         placeholderPhrases: state.placeholderPhrases,
         placeholderStyles: state.placeholderStyles,
+        customAudio: customAudio?.length ? customAudio : undefined,
       };
       const saveRes = await fetch("/api/session/save", {
         method: "POST",
@@ -290,7 +309,17 @@ export function StepFlow({ restoreSid }: { restoreSid?: string | null }) {
             />
           )}
           {state.step === 6 && (
-            <Step6Preview
+            <Step6Music
+              customAudio={state.customAudio ?? []}
+              onChange={(customAudio) => setState((s) => ({ ...s, customAudio }))}
+              onNext={goNext}
+              onBack={goBack}
+              showGoToStep={showGoToStep}
+              onGoToStep={goToStep}
+            />
+          )}
+          {state.step === 7 && (
+            <Step7Preview
               state={state}
               onPreview={handlePreview}
               onBack={goBack}

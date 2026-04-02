@@ -94,6 +94,48 @@ export async function uploadImageToR2(dataUrl: string): Promise<string> {
 }
 
 /**
+ * 上传音频到 R2（通过服务端代理）
+ * 返回 R2 key（audio/UUID 格式）
+ */
+export async function uploadAudioToR2(dataUrl: string): Promise<string> {
+  // 前端预检：base64 字符数 × 0.75 ≈ 字节数
+  const byteSize = (dataUrl.length * 3) / 4;
+  if (byteSize > 5 * 1024 * 1024) {
+    throw new Error("音频超过 5MB 限制，请选择更小的文件");
+  }
+
+  const res = await fetch("/api/audio/upload", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dataUrl }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: string }).error || "上传失败");
+  }
+
+  const { key } = await res.json() as { key: string };
+  return key;
+}
+
+/**
+ * 从 R2 获取音频 blob URL（通过服务端代理）
+ * 音频不走 IndexedDB（mp3 几 MB，不适合存 IndexedDB）
+ * 返回 blob URL，由调用方负责 revokeObjectURL
+ */
+export async function fetchAudioUrlFromR2(key: string): Promise<string | null> {
+  try {
+    const res = await fetch(`/api/audio/${encodeURIComponent(key)}`);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * 从 R2 获取图片 dataUrl（通过服务端代理）
  * 先查 IndexedDB 缓存，命中则直接返回，避免重复请求
  */

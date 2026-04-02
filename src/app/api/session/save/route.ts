@@ -77,6 +77,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         return rest;
       });
     }
+    // strip 音频 dataUrl（仅保留 audioKey）
+    if (parsed.customAudio) {
+      parsed.customAudio = parsed.customAudio.map((a: Record<string, unknown>) => {
+        const { dataUrl: _, ...rest } = a;
+        return rest;
+      });
+    }
     const cleanBody = JSON.stringify(parsed);
 
     const sid = generateSid();

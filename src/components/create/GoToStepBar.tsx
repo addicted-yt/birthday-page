@@ -10,7 +10,8 @@ const STEP_LABELS: { step: CreateStep; label: string }[] = [
   { step: 3, label: "03 · 卡片文字" },
   { step: 4, label: "04 · 祝福信" },
   { step: 5, label: "05 · 礼物图片" },
-  { step: 6, label: "06 · 预览" },
+  { step: 6, label: "06 · 背景音乐" },
+  { step: 7, label: "07 · 预览" },
 ];
 
 interface GoToStepBarProps {

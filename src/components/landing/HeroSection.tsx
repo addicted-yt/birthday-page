@@ -48,7 +48,7 @@ export function HeroSection() {
           animate={{ opacity: 1 }}
           transition={{ ...springGentle, delay: 0.7 }}
         >
-          写一段话 · 选几张照片 · 剩下的交给星光
+          写一段话 · 选几张照片 · 配一首歌 · 剩下的交给星光
         </motion.p>
         <motion.p
           className="text-xs md:text-sm tracking-[0.2em]"

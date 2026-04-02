@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useEffect } from "react";
 
 export function useAudioPlayer(src: string) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -49,6 +49,11 @@ export function useAudioPlayer(src: string) {
       fadeTimerRef.current = null;
     }
   }, []);
+
+  // src 变化时重置 audioRef，下次 getAudio 创建新 Audio 实例
+  useEffect(() => {
+    audioRef.current = null;
+  }, [src]);
 
   // 移动端首次用户手势时调用，静默 play/pause 解锁 iOS 音频限制
   const unlock = useCallback(() => {

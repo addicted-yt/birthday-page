@@ -14,6 +14,13 @@ export interface GiftImage {
   imageKey?: string;        // R2 存储 key，分享时用
 }
 
+export interface CustomAudioTrack {
+  trackId: "birthday" | "gift"; // 替换哪首默认曲
+  audioKey?: string;             // R2 存储 key
+  dataUrl?: string;              // 上传时的临时 dataUrl（创建者本设备）
+  fileName?: string;             // 用户上传的文件名（显示用）
+}
+
 export interface PlaceholderCardStyle {
   captionPosition?: "top" | "center" | "bottom";
   captionAlign?: "left" | "center" | "right";
@@ -30,10 +37,11 @@ export interface BirthdayData {
   placeholderPhrases?: string[];
   placeholderStyles?: PlaceholderCardStyle[]; // 每张默认卡的样式
   placeholderPhrase?: string;      // 已废弃，保留向后兼容
+  customAudio?: CustomAudioTrack[]; // 最多 2 项
   v: 1;
 }
 
-export type CreateStep = 1 | 2 | 3 | 4 | 5 | 6;
+export type CreateStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export interface CreateFlowState {
   step: CreateStep;
@@ -45,6 +53,7 @@ export interface CreateFlowState {
   placeholderPhrases?: string[];
   placeholderStyles?: PlaceholderCardStyle[];
   placeholderPhrase?: string;      // 已废弃，保留向后兼容
+  customAudio?: CustomAudioTrack[];
 }
 
 export type SceneId =

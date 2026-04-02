@@ -141,6 +141,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           httpMetadata: { contentType },
         });
       }));
+
+      // 复制音频：customAudio[].audioKey 格式为 audio/{uuid}
+      const customAudio = sessionData.customAudio as Array<Record<string, unknown>> | undefined;
+      if (Array.isArray(customAudio)) {
+        await Promise.all(customAudio.map(async (a) => {
+          if (typeof a.audioKey !== "string" || !a.audioKey) return;
+          const audioObj = await bucket.get(a.audioKey);
+          if (!audioObj) return;
+          const audioBuf = await audioObj.arrayBuffer();
+          await bucket.put(`permanent/${a.audioKey}`, audioBuf, {
+            httpMetadata: { contentType: "audio/mpeg" },
+          });
+        }));
+      }
     }
   } catch {
     // 复制失败不影响标记本身，_sys/permanent.json 已写入
