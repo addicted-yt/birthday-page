@@ -17,6 +17,7 @@ export function LandingBackground() {
     let animId: number;
     let t = 0;
     const stars: LStar[] = [];
+    const goldStars: LStar[] = [];
     const particles: LParticle[] = [];
     const meteors: LMeteor[] = [];
     let nextMeteor = 80 + Math.random() * 150;
@@ -43,6 +44,26 @@ export function LandingBackground() {
         twinkleOffset: Math.random()*Math.PI*2,
         driftX: (Math.random()-0.5)*0.00003,
         driftY: (Math.random()-0.5)*0.00003,
+      });
+    }
+
+    // 金色星星：8-12颗，随机位置，排除中心区域
+    const goldCount = 8 + Math.floor(Math.random() * 5);
+    for (let i = 0; i < goldCount; i++) {
+      let x, y;
+      do {
+        x = Math.random();
+        y = Math.random();
+      } while (x > 0.3 && x < 0.7 && y > 0.35 && y < 0.65); // 排除中心区域
+
+      goldStars.push({
+        x, y,
+        r: 1.5 + Math.random() * 0.7,
+        opacity: 0.3 + Math.random() * 0.2,
+        twinkleSpeed: 0.0015 + Math.random() * 0.0015,
+        twinkleOffset: Math.random() * Math.PI * 2,
+        driftX: (Math.random()-0.5)*0.00002,
+        driftY: (Math.random()-0.5)*0.00002,
       });
     }
 
@@ -98,7 +119,6 @@ export function LandingBackground() {
         { cx:0.82, cy:0.58, r:0.28, c:`rgba(100,55,165,${breathe*0.9})` },
         { cx:0.50, cy:0.50, r:0.40, c:`rgba(30,60,150,${breathe*0.6})` },
         { cx:0.65, cy:0.20, r:0.20, c:`rgba(80,120,220,${breathe*0.7})` },
-        { cx:0.22, cy:0.72, r:0.32, c:`rgba(180,140,60,${breathe*3.5})` },
       ];
       for (const h of halos) {
         const halo = ctx.createRadialGradient(canvas.width*h.cx, canvas.height*h.cy, 0, canvas.width*h.cx, canvas.height*h.cy, canvas.width*h.r);
@@ -124,6 +144,23 @@ export function LandingBackground() {
         }
         ctx.beginPath(); ctx.arc(sx,sy,s.r,0,Math.PI*2);
         ctx.fillStyle = `rgba(220,230,255,${op})`; ctx.fill();
+      }
+
+      // 渲染金色星星
+      for (const g of goldStars) {
+        g.x += g.driftX; g.y += g.driftY;
+        if (g.x<0) g.x=1; if (g.x>1) g.x=0; if (g.y<0) g.y=1; if (g.y>1) g.y=0;
+        const twinkle = Math.sin(t*g.twinkleSpeed+g.twinkleOffset)*0.15;
+        const op = Math.max(0, Math.min(1, g.opacity+twinkle));
+        const gx = g.x*canvas.width, gy = g.y*canvas.height;
+        // 金色星星带柔和光晕
+        if (op > 0.35) {
+          const glow = ctx.createRadialGradient(gx,gy,0,gx,gy,g.r*3.5);
+          glow.addColorStop(0, `rgba(210,175,90,${op*0.4})`); glow.addColorStop(1, "rgba(0,0,0,0)");
+          ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(gx,gy,g.r*3.5,0,Math.PI*2); ctx.fill();
+        }
+        ctx.beginPath(); ctx.arc(gx,gy,g.r,0,Math.PI*2);
+        ctx.fillStyle = `rgba(200,169,110,${op})`; ctx.fill();
       }
 
       nextMeteor--;
