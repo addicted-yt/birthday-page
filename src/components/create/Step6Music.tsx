@@ -2,7 +2,6 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { CustomAudioTrack, CreateStep } from "@/types/birthday";
 import { SpringButton } from "@/components/ui/SpringButton";
-import { uploadAudioToR2 } from "@/lib/imageStorage";
 import { GoToStepBar } from "./GoToStepBar";
 
 interface Step6MusicProps {
@@ -20,8 +19,7 @@ const TRACKS = [
 ];
 
 export function Step6Music({ customAudio, onChange, onNext, onBack, showGoToStep, onGoToStep }: Step6MusicProps) {
-  // 每首曲目的上传状态
-  const [uploading, setUploading] = useState<Record<string, boolean>>({});
+  // 每首曲目的错误提示
   const [errors, setErrors] = useState<Record<string, string>>({});
   // 当前正在试听的 trackId（null = 无）
   const [playingId, setPlayingId] = useState<string | null>(null);
@@ -107,7 +105,6 @@ export function Step6Music({ customAudio, onChange, onNext, onBack, showGoToStep
       return;
     }
 
-    setUploading(prev => ({ ...prev, [trackId]: true }));
     stopPreview();
 
     try {
@@ -118,27 +115,16 @@ export function Step6Music({ customAudio, onChange, onNext, onBack, showGoToStep
         reader.readAsDataURL(file);
       });
 
-      // 先尝试上传到 R2，失败则仅保留 dataUrl（本地预览仍可用）
-      let audioKey: string | undefined;
-      try {
-        audioKey = await uploadAudioToR2(dataUrl);
-      } catch {
-        // 上传失败时保留 dataUrl，分享时会在 prepareMedia 重试
-      }
-
       const newTrack: CustomAudioTrack = {
         trackId,
         dataUrl,
-        audioKey,
         fileName: file.name,
       };
 
       const filtered = customAudio.filter(a => a.trackId !== trackId);
       onChange([...filtered, newTrack]);
     } catch {
-      showError(trackId, "上传失败，请重试");
-    } finally {
-      setUploading(prev => ({ ...prev, [trackId]: false }));
+      showError(trackId, "读取文件失败，请重试");
     }
   };
 
@@ -177,7 +163,6 @@ export function Step6Music({ customAudio, onChange, onNext, onBack, showGoToStep
       <div className="flex flex-col gap-4 w-full max-w-sm">
         {TRACKS.map(({ trackId, name, scene, src: defaultSrc }) => {
           const track = getTrack(trackId);
-          const isUploading = uploading[trackId];
           const error = errors[trackId];
           const isPlaying = playingId === trackId;
           const hasCustom = !!track;
@@ -195,8 +180,7 @@ export function Step6Music({ customAudio, onChange, onNext, onBack, showGoToStep
                 {/* 试听按钮 */}
                 <button
                   onClick={() => handleTogglePreview(trackId, defaultSrc)}
-                  disabled={isUploading}
-                  className="shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg border border-white/20 text-white/50 hover:text-white/80 hover:border-white/40 transition-colors disabled:opacity-30"
+                  className="shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg border border-white/20 text-white/50 hover:text-white/80 hover:border-white/40 transition-colors"
                   title={isPlaying ? "停止试听" : "试听"}
                 >
                   {isPlaying ? (
@@ -220,9 +204,7 @@ export function Step6Music({ customAudio, onChange, onNext, onBack, showGoToStep
               )}
 
               {/* 操作区 */}
-              {isUploading ? (
-                <p className="text-xs tracking-wider" style={{ color: "rgba(255,255,255,0.35)" }}>上传中…</p>
-              ) : hasCustom ? (
+              {hasCustom ? (
                 // 已替换状态
                 <div className="flex gap-2">
                   <button

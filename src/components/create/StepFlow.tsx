@@ -101,43 +101,45 @@ export function StepFlow({ restoreSid }: { restoreSid?: string | null }) {
     giftImages: typeof state.giftImages;
     customAudio: typeof state.customAudio;
   }> => {
-    const cardPhotos = await Promise.all(
-      state.cardPhotos.map(async (p) => {
-        if (!p.dataUrl) return p;
-        if (p.imageKey) return p; // 已上传过，直接复用，不重复上传
-        // 存入本地 IndexedDB（创建者永久可用）
-        const localKey = `card-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-        await idbPut(localKey, p.dataUrl);
-        // 上传到 R2（收件人通过链接访问），失败则抛出
-        const imageKey = await uploadImageToR2(p.dataUrl);
-        return { ...p, imageKey };
-      })
-    );
-    const giftImages = await Promise.all(
-      state.giftImages.map(async (g) => {
-        if (!g.dataUrl) return g;
-        if (g.imageKey) return g; // 已上传过，直接复用，不重复上传
-        const localKey = `gift-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-        await idbPut(localKey, g.dataUrl);
-        const imageKey = await uploadImageToR2(g.dataUrl);
-        return { ...g, imageKey };
-      })
-    );
-    // 上传自定义音频（已有 audioKey 则跳过，dataUrl 存在则上传）
-    const customAudio = await Promise.all(
-      (state.customAudio ?? []).map(async (track) => {
-        if (track.audioKey) {
-          // 已上传过，strip dataUrl 避免 session/save 超出大小限制
-          const { dataUrl: _, ...rest } = track;
-          return rest;
-        }
-        if (!track.dataUrl) return track; // 无数据，跳过
-        const audioKey = await uploadAudioToR2(track.dataUrl);
-        // strip dataUrl，只保留 key
-        const { dataUrl: _removed, ...rest } = track;
-        return { ...rest, audioKey };
-      })
-    );
+    // 三组并行上传，缩短总等待时间
+    const [cardPhotos, giftImages, customAudio] = await Promise.all([
+      Promise.all(
+        state.cardPhotos.map(async (p) => {
+          if (!p.dataUrl) return p;
+          if (p.imageKey) return p; // 已上传过，直接复用，不重复上传
+          // 存入本地 IndexedDB（创建者永久可用）
+          const localKey = `card-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+          await idbPut(localKey, p.dataUrl);
+          // 上传到 R2（收件人通过链接访问），失败则抛出
+          const imageKey = await uploadImageToR2(p.dataUrl);
+          return { ...p, imageKey };
+        })
+      ),
+      Promise.all(
+        state.giftImages.map(async (g) => {
+          if (!g.dataUrl) return g;
+          if (g.imageKey) return g; // 已上传过，直接复用，不重复上传
+          const localKey = `gift-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+          await idbPut(localKey, g.dataUrl);
+          const imageKey = await uploadImageToR2(g.dataUrl);
+          return { ...g, imageKey };
+        })
+      ),
+      Promise.all(
+        (state.customAudio ?? []).map(async (track) => {
+          if (track.audioKey) {
+            // 已上传过，strip dataUrl 避免 session/save 超出大小限制
+            const { dataUrl: _, ...rest } = track;
+            return rest;
+          }
+          if (!track.dataUrl) return track; // 无数据，跳过
+          const audioKey = await uploadAudioToR2(track.dataUrl);
+          // strip dataUrl，只保留 key
+          const { dataUrl: _removed, ...rest } = track;
+          return { ...rest, audioKey };
+        })
+      ),
+    ]);
     return { cardPhotos, giftImages, customAudio };
   };
 
