@@ -12,11 +12,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 interface R2Bucket {
-  get(key: string): Promise<R2Object | null>;
+  get(key: string, options?: { range?: { offset: number; length: number } }): Promise<R2Object | null>;
 }
 interface R2Object {
   httpMetadata?: { contentType?: string };
-  arrayBuffer(): Promise<ArrayBuffer>;
+  body: ReadableStream<Uint8Array>;
+  size: number;
 }
 
 function getR2Bucket(): R2Bucket | undefined {
@@ -44,39 +45,55 @@ export async function GET(
     return NextResponse.json({ error: "音频服务暂不可用（仅 Workers 环境支持）" }, { status: 503 });
   }
 
-  // 先按 key 原样查找，再尝试加 audio/ 前缀，最后尝试 permanent/ 前缀（永久保存后的位置）
-  let object = await bucket.get(key);
-  if (!object && !key.startsWith("audio/")) {
-    object = await bucket.get(`audio/${key}`);
+  // 先找到文件存在的路径
+  const possiblePaths = [
+    key,
+    !key.startsWith("audio/") ? `audio/${key}` : null,
+    `permanent/${key}`,
+    !key.startsWith("audio/") ? `permanent/audio/${key}` : null,
+  ].filter((p): p is string => p !== null);
+
+  let foundPath: string | null = null;
+  for (const path of possiblePaths) {
+    const obj = await bucket.get(path);
+    if (obj) {
+      foundPath = path;
+      break;
+    }
   }
-  if (!object) {
-    object = await bucket.get(`permanent/${key}`);
-  }
-  if (!object && !key.startsWith("audio/")) {
-    object = await bucket.get(`permanent/audio/${key}`);
-  }
-  if (!object) {
+
+  if (!foundPath) {
     return NextResponse.json({ error: "音频不存在或已过期" }, { status: 404 });
   }
 
-  const arrayBuffer = await object.arrayBuffer();
-
-  // 支持 Range 请求（音频 seek 需要）
+  // 解析 Range 请求
   const rangeHeader = req.headers.get("range");
   if (rangeHeader) {
-    const total = arrayBuffer.byteLength;
     const match = rangeHeader.match(/bytes=(\d+)-(\d*)/);
     if (match) {
+      // 先获取完整对象以获取总大小
+      const fullObject = await bucket.get(foundPath);
+      if (!fullObject) {
+        return NextResponse.json({ error: "音频不存在或已过期" }, { status: 404 });
+      }
+      const totalSize = fullObject.size;
       const start = parseInt(match[1]);
-      const end = match[2] ? parseInt(match[2]) : total - 1;
-      const chunk = arrayBuffer.slice(start, end + 1);
-      return new NextResponse(chunk, {
+      const end = match[2] ? parseInt(match[2]) : totalSize - 1;
+      const length = end - start + 1;
+
+      // 重新获取指定范围
+      const rangedObject = await bucket.get(foundPath, { range: { offset: start, length } });
+      if (!rangedObject) {
+        return NextResponse.json({ error: "音频不存在或已过期" }, { status: 404 });
+      }
+
+      return new NextResponse(rangedObject.body, {
         status: 206,
         headers: {
           "Content-Type": "audio/mpeg",
-          "Content-Range": `bytes ${start}-${end}/${total}`,
+          "Content-Range": `bytes ${start}-${end}/${totalSize}`,
           "Accept-Ranges": "bytes",
-          "Content-Length": String(chunk.byteLength),
+          "Content-Length": String(length),
           "Cache-Control": "public, max-age=1209600",
           "Access-Control-Allow-Origin": "*",
         },
@@ -84,10 +101,17 @@ export async function GET(
     }
   }
 
-  return new NextResponse(arrayBuffer, {
+  // 无 Range 请求，返回完整文件流
+  const object = await bucket.get(foundPath);
+  if (!object) {
+    return NextResponse.json({ error: "音频不存在或已过期" }, { status: 404 });
+  }
+
+  return new NextResponse(object.body, {
     headers: {
       "Content-Type": "audio/mpeg",
       "Accept-Ranges": "bytes",
+      "Content-Length": String(object.size),
       "Cache-Control": "public, max-age=1209600",
       "Access-Control-Allow-Origin": "*",
     },
