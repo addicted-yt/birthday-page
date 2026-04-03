@@ -71,7 +71,10 @@ export function Step6Music({ customAudio, onChange, onNext, onBack, showGoToStep
     // 优先用已上传的 dataUrl（本设备），其次用 audioKey 代理，否则用默认
     let src = defaultSrc;
     if (track?.dataUrl) src = track.dataUrl;
-    else if (track?.audioKey) src = `/api/audio/${track.audioKey}`;
+    else if (track?.audioKey) {
+      const uuid = track.audioKey.startsWith("audio/") ? track.audioKey.slice(6) : track.audioKey;
+      src = `/api/audio/${uuid}`;
+    }
 
     const audio = new Audio(src);
     audioRef.current = audio;

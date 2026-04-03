@@ -129,13 +129,20 @@ export function ResultPageShell({
   // 根据 customAudio 决定音频 src（有自定义 key 则走代理，否则用默认）
   const effectiveBirthdaySrc = useMemo(() => {
     const track = data?.customAudio?.find((a) => a.trackId === "birthday");
-    if (track?.audioKey) return `/api/audio/${track.audioKey}`;
+    if (track?.audioKey) {
+      // audioKey 格式是 "audio/{uuid}"，去掉前缀后传给 API（[key] 只能捕获单段路径）
+      const uuid = track.audioKey.startsWith("audio/") ? track.audioKey.slice(6) : track.audioKey;
+      return `/api/audio/${uuid}`;
+    }
     return "/audio/birthday-song.mp3";
   }, [data?.customAudio]);
 
   const effectiveGiftSrc = useMemo(() => {
     const track = data?.customAudio?.find((a) => a.trackId === "gift");
-    if (track?.audioKey) return `/api/audio/${track.audioKey}`;
+    if (track?.audioKey) {
+      const uuid = track.audioKey.startsWith("audio/") ? track.audioKey.slice(6) : track.audioKey;
+      return `/api/audio/${uuid}`;
+    }
     return "/audio/gift-bgm.mp3";
   }, [data?.customAudio]);
 
