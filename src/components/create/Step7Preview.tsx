@@ -13,6 +13,7 @@ interface Step7PreviewProps {
   onGoToStep: (step: CreateStep) => void;
   uploading?: boolean;
   uploadError?: string | null;
+  uploadStage?: string | null;
 }
 
 const STEP_LABELS: { step: CreateStep; label: string }[] = [
@@ -170,7 +171,7 @@ function PhotoCardItem({ photo }: { photo: CardPhoto }) {
   );
 }
 
-export function Step7Preview({ state, onPreview, onBack, onGoToStep, uploading, uploadError }: Step7PreviewProps) {
+export function Step7Preview({ state, onPreview, onBack, onGoToStep, uploading, uploadError, uploadStage }: Step7PreviewProps) {
   const [showSteps, setShowSteps] = useState(false);
 
   const hasPhotos = state.cardPhotos.length > 0;
@@ -260,7 +261,7 @@ export function Step7Preview({ state, onPreview, onBack, onGoToStep, uploading, 
           </p>
         )}
         <SpringButton variant="primary" onClick={onPreview} className="w-full" disabled={uploading}>
-          {uploading ? "上传中…" : "预览效果"}
+          {uploading ? (uploadStage ?? "上传中…") : "预览效果"}
         </SpringButton>
 
         <SpringButton variant="secondary" onClick={onBack} className="w-full">

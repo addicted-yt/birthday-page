@@ -91,6 +91,7 @@ export function StepFlow({ restoreSid }: { restoreSid?: string | null }) {
 
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadStage, setUploadStage] = useState<string | null>(null);
 
   /**
    * 上传所有图片和音频到 R2，返回带 key 的数据
@@ -146,9 +147,20 @@ export function StepFlow({ restoreSid }: { restoreSid?: string | null }) {
   const handlePreview = async () => {
     setUploading(true);
     setUploadError(null);
+    setUploadStage(null);
     try {
+      setUploadStage("正在上传图片和音频...");
       const { cardPhotos, giftImages, customAudio } = await prepareMedia();
 
+      // 将 imageKey/audioKey 写回 state，防止 session/save 失败后重试时重复上传
+      setState(s => ({
+        ...s,
+        cardPhotos,
+        giftImages,
+        customAudio: customAudio ?? [],
+      }));
+
+      setUploadStage("正在生成分享链接...");
       // 把完整 BirthdayData 存到 R2，分享链接只传短 sid，避免 URL 过长导致微信无法识别
       const birthdayData: BirthdayData = {
         v: 1 as const,
@@ -177,7 +189,11 @@ export function StepFlow({ restoreSid }: { restoreSid?: string | null }) {
       setNavigatingAway(true);
       setTimeout(() => router.push(`/result?sid=${sessionSid}&lsid=${localSid}&name=${encodedName}&creator=1`), 380);
     } catch {
-      setUploadError("上传失败，请检查网络后重试");
+      setUploadError(
+        uploadStage === "正在生成分享链接..."
+          ? "生成链接失败，请重试"
+          : "上传失败，请检查网络后重试"
+      );
       setUploading(false);
     }
   };
@@ -332,6 +348,7 @@ export function StepFlow({ restoreSid }: { restoreSid?: string | null }) {
               onGoToStep={goToStep}
               uploading={uploading}
               uploadError={uploadError}
+              uploadStage={uploadStage}
             />
           )}
         </motion.div>
