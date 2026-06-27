@@ -39,16 +39,83 @@ function getR2Bucket(): R2Bucket | undefined {
   }
 }
 
-function getAdminPassword(): string | undefined {
+function getAdminPasswordHash(): string | undefined {
   try {
     const ctx = getCloudflareContext();
-    return (ctx.env as Record<string, unknown>).PERMANENT_ADMIN_PASSWORD as string | undefined;
+    return (ctx.env as Record<string, unknown>).PERMANENT_ADMIN_PASSWORD_HASH as string | undefined;
   } catch {
     return undefined;
   }
 }
 
+// 简易频率限制：R2 存储最近失败时间戳，5 次/分钟失败后锁定 5 分钟
+async function checkRateLimit(bucket: R2Bucket | undefined): Promise<boolean> {
+  if (!bucket) return true; // 无 R2 环境时不限制
+  const KEY = "_sys/ratelimit.json";
+  const now = Date.now();
+  const WINDOW_MS = 60_000;      // 1 分钟窗口
+  const MAX_FAILS = 5;
+  const LOCK_MS = 300_000;       // 超限后锁定 5 分钟
+
+  let timestamps: number[] = [];
+  try {
+    const obj = await bucket.get(KEY);
+    if (obj) timestamps = JSON.parse(await obj.text()) as number[];
+  } catch { /* 文件不存在或损坏 */ }
+
+  const recent = timestamps.filter(t => now - t < LOCK_MS);
+  if (recent.length >= MAX_FAILS) return false; // 仍在锁定
+
+  return true;
+}
+
+async function recordFailedAttempt(bucket: R2Bucket | undefined): Promise<void> {
+  if (!bucket) return;
+  const KEY = "_sys/ratelimit.json";
+  const now = Date.now();
+  const LOCK_MS = 300_000;
+  let timestamps: number[] = [];
+  try {
+    const obj = await bucket.get(KEY);
+    if (obj) timestamps = JSON.parse(await obj.text()) as number[];
+  } catch { /* ignore */ }
+  // 只保留锁定窗口内的时间戳，自动清理过期记录
+  timestamps = timestamps.filter(t => now - t < LOCK_MS);
+  timestamps.push(now);
+  await bucket.put(KEY, JSON.stringify(timestamps), {
+    httpMetadata: { contentType: "application/json" },
+  });
+}
+
+async function verifyPassword(input: string): Promise<boolean> {
+  const storedHash = getAdminPasswordHash();
+  if (!storedHash) return false;
+  const encoder = new TextEncoder();
+  const data = encoder.encode(input);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const inputHash = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+  return inputHash === storedHash;
+}
+
+const ALLOWED_ORIGINS = new Set([
+  "https://thesedays.cn",
+  "https://www.thesedays.cn",
+  "https://happy-birthday.65751062.workers.dev",
+  "http://localhost:3000",
+  "http://localhost:3001",
+]);
+
+function isAllowedOrigin(origin: string | null): boolean {
+  if (!origin) return false;
+  return ALLOWED_ORIGINS.has(origin);
+}
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  const origin = req.headers.get("origin");
+  if (!isAllowedOrigin(origin)) {
+    return NextResponse.json({ error: "不允许的来源" }, { status: 403 });
+  }
   let body: { sessionId?: unknown; password?: unknown };
   try {
     body = await req.json();
@@ -63,16 +130,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "无效的 sessionId" }, { status: 400 });
   }
 
-  // 验证密码
-  const adminPassword = getAdminPassword();
-  if (!adminPassword || password !== adminPassword) {
-    return NextResponse.json({
-      error: "密码错误",
-      debug: { envFound: !!adminPassword, envLen: adminPassword?.length ?? 0, inputLen: typeof password === "string" ? password.length : -1 },
-    }, { status: 403 });
+  // 先检查频率限制（密码校验前）
+  const preBucket = getR2Bucket();
+  const allowed = await checkRateLimit(preBucket);
+  if (!allowed) {
+    return NextResponse.json({ error: "尝试次数过多，请 5 分钟后重试" }, { status: 429 });
   }
 
-  const bucket = getR2Bucket();
+  // 验证密码
+  const passwordOk = typeof password === "string" && await verifyPassword(password);
+  if (!passwordOk) {
+    await recordFailedAttempt(preBucket);
+    return NextResponse.json({ error: "密码错误" }, { status: 403 });
+  }
+
+  const bucket = preBucket;
   if (!bucket) {
     return NextResponse.json({ error: "服务暂不可用（仅 Workers 环境支持）" }, { status: 503 });
   }

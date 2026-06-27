@@ -51,10 +51,15 @@ export function CreatorToolbar({ shareUrl, sessionId, onNavigateAway, onTakeSnap
     if (!sessionId || !adminPassword) return;
     setAdminStatus("loading");
     try {
+      // 客户端 SHA-256，不传输明文密码
+      const encoder = new TextEncoder();
+      const data = encoder.encode(adminPassword);
+      const hashBuf = await crypto.subtle.digest("SHA-256", data);
+      const passwordHash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, "0")).join("");
       const res = await fetch("/api/permanent/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, password: adminPassword }),
+        body: JSON.stringify({ sessionId, password: passwordHash }),
       });
       if (res.ok) {
         setAdminStatus("success");
