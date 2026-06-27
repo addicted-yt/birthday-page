@@ -121,8 +121,9 @@ export function CreatorToolbar({ shareUrl, sessionId, onNavigateAway, onTakeSnap
           继续修改
         </motion.button>
 
-        {/* 分享按钮 */}
-        <motion.button
+        {/* 分享按钮 — 仅在有真实链接时显示 */}
+        {shareUrl && (
+          <motion.button
           className="flex items-center gap-2 px-5 py-2.5 rounded-full font-light text-xs tracking-widest"
           style={{
             background: "rgba(255,255,255,0.92)",
@@ -139,6 +140,7 @@ export function CreatorToolbar({ shareUrl, sessionId, onNavigateAway, onTakeSnap
           </svg>
           分享给 TA
         </motion.button>
+        )}
       </motion.div>
 
       {/* Toast 弹窗 — 页面中央 */}

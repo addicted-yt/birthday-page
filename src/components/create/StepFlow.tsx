@@ -46,6 +46,7 @@ function restoreStateFromSid(sid: string): CreateFlowState | null {
       giftLetter: data.giftLetter,
       letterAlign: data.letterAlign,
       giftImages: data.giftImages,
+      introMusicEnabled: data.introMusicEnabled,
       placeholderPhrases: data.placeholderPhrases,
       placeholderStyles: data.placeholderStyles,
       customAudio: data.customAudio,
@@ -64,6 +65,7 @@ export function StepFlow({ restoreSid }: { restoreSid?: string | null }) {
     cardPhotos: [],
     giftLetter: DEFAULT_LETTER,
     giftImages: [],
+    introMusicEnabled: false,
     customAudio: [],
   });
 
@@ -169,6 +171,7 @@ export function StepFlow({ restoreSid }: { restoreSid?: string | null }) {
         giftLetter: state.giftLetter,
         letterAlign: state.letterAlign,
         giftImages,
+        introMusicEnabled: state.introMusicEnabled,
         placeholderPhrases: state.placeholderPhrases,
         placeholderStyles: state.placeholderStyles,
         customAudio: customAudio?.length ? customAudio : undefined,
@@ -332,6 +335,8 @@ export function StepFlow({ restoreSid }: { restoreSid?: string | null }) {
           )}
           {state.step === 6 && (
             <Step6Music
+              introMusicEnabled={!!state.introMusicEnabled}
+              onIntroMusicEnabledChange={(introMusicEnabled) => setState((s) => ({ ...s, introMusicEnabled }))}
               customAudio={state.customAudio ?? []}
               onChange={(customAudio) => setState((s) => ({ ...s, customAudio }))}
               onNext={goNext}

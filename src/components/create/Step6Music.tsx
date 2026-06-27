@@ -5,6 +5,8 @@ import { SpringButton } from "@/components/ui/SpringButton";
 import { GoToStepBar } from "./GoToStepBar";
 
 interface Step6MusicProps {
+  introMusicEnabled: boolean;
+  onIntroMusicEnabledChange: (enabled: boolean) => void;
   customAudio: CustomAudioTrack[];
   onChange: (audio: CustomAudioTrack[]) => void;
   onNext: () => void;
@@ -13,12 +15,25 @@ interface Step6MusicProps {
   onGoToStep?: (step: CreateStep) => void;
 }
 
+const TOTAL_AUDIO_LIMIT_BYTES = 15 * 1024 * 1024;
+
+const INTRO_TRACK = { trackId: "intro" as const, name: "开场音乐", scene: "启幕后至吹蜡烛前播放", src: "/audio/gift-bgm.mp3" };
+
 const TRACKS = [
   { trackId: "birthday" as const, name: "生日快乐歌", scene: "蜡烛亮起时播放", src: "/audio/birthday-song.mp3" },
   { trackId: "gift" as const, name: "钢琴曲", scene: "礼物打开后播放", src: "/audio/gift-bgm.mp3" },
 ];
 
-export function Step6Music({ customAudio, onChange, onNext, onBack, showGoToStep, onGoToStep }: Step6MusicProps) {
+export function Step6Music({
+  introMusicEnabled,
+  onIntroMusicEnabledChange,
+  customAudio,
+  onChange,
+  onNext,
+  onBack,
+  showGoToStep,
+  onGoToStep,
+}: Step6MusicProps) {
   // 每首曲目的错误提示
   const [errors, setErrors] = useState<Record<string, string>>({});
   // 当前正在试听的 trackId（null = 无）
@@ -50,15 +65,15 @@ export function Step6Music({ customAudio, onChange, onNext, onBack, showGoToStep
     };
   }, [stopPreview]);
 
-  const getTrack = (trackId: "birthday" | "gift") => customAudio.find(a => a.trackId === trackId);
+  const getTrack = (trackId: CustomAudioTrack["trackId"]) => customAudio.find(a => a.trackId === trackId);
 
-  const showError = (trackId: "birthday" | "gift", msg: string) => {
+  const showError = (trackId: CustomAudioTrack["trackId"], msg: string) => {
     setErrors(prev => ({ ...prev, [trackId]: msg }));
     setTimeout(() => setErrors(prev => { const n = { ...prev }; delete n[trackId]; return n; }), 3000);
   };
 
   // 试听切换
-  const handleTogglePreview = (trackId: "birthday" | "gift", defaultSrc: string) => {
+  const handleTogglePreview = (trackId: CustomAudioTrack["trackId"], defaultSrc: string) => {
     if (playingId === trackId) {
       stopPreview();
       return;
@@ -87,7 +102,7 @@ export function Step6Music({ customAudio, onChange, onNext, onBack, showGoToStep
   };
 
   // 上传文件
-  const handleFileChange = async (trackId: "birthday" | "gift", e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (trackId: CustomAudioTrack["trackId"], e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
@@ -97,11 +112,12 @@ export function Step6Music({ customAudio, onChange, onNext, onBack, showGoToStep
       showError(trackId, "仅支持 mp3、m4a 格式");
       return;
     }
-    // 累计大小校验：两首合计不超过 10MB
-    const otherTrack = customAudio.find(a => a.trackId !== trackId);
-    const otherSize = otherTrack?.dataUrl ? (otherTrack.dataUrl.length * 3) / 4 : 0;
-    if (otherSize + file.size > 10 * 1024 * 1024) {
-      showError(trackId, "两首音乐合计超过 10MB 限制");
+    // 累计大小校验：三首合计不超过 15MB
+    const otherSize = customAudio
+      .filter(a => a.trackId !== trackId && a.dataUrl)
+      .reduce((sum, track) => sum + (((track.dataUrl?.length ?? 0) * 3) / 4), 0);
+    if (otherSize + file.size > TOTAL_AUDIO_LIMIT_BYTES) {
+      showError(trackId, "三首音乐合计超过 15MB 限制");
       return;
     }
 
@@ -129,17 +145,27 @@ export function Step6Music({ customAudio, onChange, onNext, onBack, showGoToStep
   };
 
   // 恢复默认
-  const handleRestore = (trackId: "birthday" | "gift") => {
+  const handleRestore = (trackId: CustomAudioTrack["trackId"]) => {
     stopPreview();
     onChange(customAudio.filter(a => a.trackId !== trackId));
   };
 
   // 重新上传：清除旧 key，触发 file input
-  const handleReupload = (trackId: "birthday" | "gift") => {
+  const handleReupload = (trackId: CustomAudioTrack["trackId"]) => {
     stopPreview();
     onChange(customAudio.filter(a => a.trackId !== trackId));
     setTimeout(() => fileInputRefs.current[trackId]?.click(), 50);
   };
+
+  const handleIntroToggle = () => {
+    if (playingId === "intro") stopPreview();
+    onIntroMusicEnabledChange(!introMusicEnabled);
+  };
+
+  const hasIntroCustom = !!getTrack("intro");
+  const introError = errors.intro;
+  const introPlaying = playingId === "intro";
+  const shouldShowNext = introMusicEnabled || customAudio.length > 0;
 
   return (
     <div className="flex flex-col items-center gap-8">
@@ -155,12 +181,124 @@ export function Step6Music({ customAudio, onChange, onNext, onBack, showGoToStep
           可选 · 替换默认音乐为你们的歌
         </p>
         <p className="text-xs mt-1 tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>
-          支持 mp3、m4a · 一共不超过 10MB · 跳过则使用默认音乐
+          支持 mp3、m4a · 一共不超过 15MB · 跳过则使用默认音乐
         </p>
       </div>
 
       {/* 曲目列表 */}
       <div className="flex flex-col gap-4 w-full max-w-sm">
+        <div className="bg-white/5 border border-white/10 rounded-lg p-4 flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-white/80 text-sm tracking-wide truncate">{INTRO_TRACK.name}</p>
+              <p className="text-xs mt-0.5 tracking-wider leading-relaxed" style={{ color: "rgba(255,255,255,0.25)" }}>
+                {introMusicEnabled
+                  ? (hasIntroCustom ? (getTrack("intro")?.fileName ?? "已替换") : "默认使用礼物打开后的钢琴曲")
+                  : INTRO_TRACK.scene}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleIntroToggle}
+              className="shrink-0 relative rounded-full border transition-colors"
+              style={{
+                width: "44px",
+                height: "26px",
+                borderColor: introMusicEnabled ? "rgba(255,255,255,0.26)" : "rgba(255,255,255,0.14)",
+                background: introMusicEnabled ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.05)",
+              }}
+              aria-pressed={introMusicEnabled}
+              title={introMusicEnabled ? "关闭开场音乐" : "开启开场音乐"}
+            >
+              <span
+                className="absolute rounded-full transition-transform"
+                style={{
+                  top: "3px",
+                  left: "3px",
+                  width: "18px",
+                  height: "18px",
+                  background: "rgba(255,255,255,0.82)",
+                  transform: introMusicEnabled ? "translateX(18px)" : "translateX(0)",
+                }}
+              />
+            </button>
+          </div>
+
+          {!introMusicEnabled && (
+            <p className="text-xs tracking-wider" style={{ color: "rgba(255,255,255,0.20)" }}>
+              未开启则保持当前效果不变
+            </p>
+          )}
+
+          {introMusicEnabled && (
+            <>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs tracking-wider" style={{ color: "rgba(255,255,255,0.20)" }}>
+                  启幕后开始播放
+                </p>
+                <button
+                  onClick={() => handleTogglePreview(INTRO_TRACK.trackId, INTRO_TRACK.src)}
+                  className="shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg border border-white/20 text-white/50 hover:text-white/80 hover:border-white/40 transition-colors"
+                  title={introPlaying ? "停止试听" : "试听"}
+                >
+                  {introPlaying ? (
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                      <rect x="3" y="2" width="4" height="12" rx="1"/>
+                      <rect x="9" y="2" width="4" height="12" rx="1"/>
+                    </svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M4 2.5l10 5.5-10 5.5V2.5z"/>
+                    </svg>
+                  )}
+                </button>
+              </div>
+
+              {introError && (
+                <p className="text-xs tracking-wider" style={{ color: "rgba(255,120,80,0.9)" }}>{introError}</p>
+              )}
+
+              {hasIntroCustom ? (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleRestore("intro")}
+                    className="flex-1 min-h-[44px] text-xs tracking-wider rounded-lg border border-white/15 text-white/40 hover:text-white/60 hover:border-white/25 transition-colors"
+                  >
+                    恢复默认
+                  </button>
+                  <button
+                    onClick={() => handleReupload("intro")}
+                    className="flex-1 min-h-[44px] text-xs tracking-wider rounded-lg border border-dashed border-white/15 text-white/40 hover:text-white/60 hover:border-white/30 transition-colors"
+                  >
+                    重新上传
+                  </button>
+                  <input
+                    ref={el => { fileInputRefs.current.intro = el; }}
+                    type="file"
+                    accept=".mp3,.m4a,audio/mpeg,audio/mp4,audio/x-m4a"
+                    className="hidden"
+                    onChange={e => handleFileChange("intro", e)}
+                  />
+                </div>
+              ) : (
+                <label className="bg-white/3 border border-dashed border-white/15 rounded-lg cursor-pointer hover:border-white/30 transition-colors flex items-center justify-center min-h-[44px]">
+                  <input
+                    ref={el => { fileInputRefs.current.intro = el; }}
+                    type="file"
+                    accept=".mp3,.m4a,audio/mpeg,audio/mp4,audio/x-m4a"
+                    className="hidden"
+                    onChange={e => handleFileChange("intro", e)}
+                  />
+                  <span className="text-xs tracking-wider" style={{ color: "rgba(255,255,255,0.35)" }}>
+                    + 上传替换
+                  </span>
+                </label>
+              )}
+            </>
+          )}
+        </div>
+
         {TRACKS.map(({ trackId, name, scene, src: defaultSrc }) => {
           const track = getTrack(trackId);
           const error = errors[trackId];
@@ -256,7 +394,7 @@ export function Step6Music({ customAudio, onChange, onNext, onBack, showGoToStep
       <div className="flex gap-4">
         <SpringButton variant="secondary" onClick={handleBack}>返回</SpringButton>
         <SpringButton variant="primary" onClick={handleNext}>
-          {customAudio.length === 0 ? "跳过" : "下一步"}
+          {shouldShowNext ? "下一步" : "跳过"}
         </SpringButton>
       </div>
 

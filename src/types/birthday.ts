@@ -15,10 +15,10 @@ export interface GiftImage {
 }
 
 export interface CustomAudioTrack {
-  trackId: "birthday" | "gift"; // 替换哪首默认曲
-  audioKey?: string;             // R2 存储 key
-  dataUrl?: string;              // 上传时的临时 dataUrl（创建者本设备）
-  fileName?: string;             // 用户上传的文件名（显示用）
+  trackId: "intro" | "birthday" | "gift"; // 替换哪首默认曲
+  audioKey?: string;                      // R2 存储 key
+  dataUrl?: string;                       // 上传时的临时 dataUrl（创建者本设备）
+  fileName?: string;                      // 用户上传的文件名（显示用）
 }
 
 export interface PlaceholderCardStyle {
@@ -34,10 +34,11 @@ export interface BirthdayData {
   giftLetter: string;
   letterAlign?: "left" | "center" | "right";
   giftImages: GiftImage[];
+  introMusicEnabled?: boolean;
   placeholderPhrases?: string[];
   placeholderStyles?: PlaceholderCardStyle[]; // 每张默认卡的样式
   placeholderPhrase?: string;      // 已废弃，保留向后兼容
-  customAudio?: CustomAudioTrack[]; // 最多 2 项
+  customAudio?: CustomAudioTrack[]; // 最多 3 项
   v: 1;
 }
 
@@ -50,6 +51,7 @@ export interface CreateFlowState {
   giftLetter: string;
   letterAlign?: "left" | "center" | "right";
   giftImages: GiftImage[];
+  introMusicEnabled?: boolean;
   placeholderPhrases?: string[];
   placeholderStyles?: PlaceholderCardStyle[];
   placeholderPhrase?: string;      // 已废弃，保留向后兼容

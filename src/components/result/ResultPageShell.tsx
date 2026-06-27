@@ -99,8 +99,16 @@ export function ResultPageShell({
         setData(birthdayData as BirthdayData);
       })
       .catch(() => {
-        // 服务端拉取失败，降级到 d= 参数（旧链接兼容）
-        // 如果 d= 也没有，则保持空壳（只有名字）
+        // 服务端拉取失败，降级到 sessionStorage（本地预览无 R2 时使用）
+        if (sessionId) {
+          try {
+            const stored = sessionStorage.getItem(sessionId);
+            if (stored) {
+              const parsed = JSON.parse(stored) as BirthdayData;
+              setData(parsed);
+            }
+          } catch { /* ignore */ }
+        }
       })
       .finally(() => {
         setIsLoadingSession(false);
@@ -146,13 +154,26 @@ export function ResultPageShell({
     return "/audio/gift-bgm.mp3";
   }, [data?.customAudio]);
 
+  const effectiveIntroSrc = useMemo(() => {
+    const track = data?.customAudio?.find((a) => a.trackId === "intro");
+    if (track?.audioKey) {
+      const uuid = track.audioKey.startsWith("audio/") ? track.audioKey.slice(6) : track.audioKey;
+      return `/api/audio/${uuid}`;
+    }
+    return "/audio/gift-bgm.mp3";
+  }, [data?.customAudio]);
+
+  const introMusic = useAudioPlayer(effectiveIntroSrc);
   const birthdaySong = useAudioPlayer(effectiveBirthdaySrc);
   const pianoMusic = useAudioPlayer(effectiveGiftSrc);
 
+  const introStarted = useRef(false);
+  const introFadePromiseRef = useRef<Promise<void> | null>(null);
+  const introCompletedRef = useRef(false);
   const birthdaySongStarted = useRef(false);
   const birthdayFadePromiseRef = useRef<Promise<void> | null>(null);
   const birthdayExitedCakeRef = useRef(false);
-  const activeTrackRef = useRef<"birthday" | "gift" | null>(null);
+  const activeTrackRef = useRef<"intro" | "birthday" | "gift" | null>(null);
   const micPromptActiveRef = useRef(false);
   const pianoStarted = useRef(false);
   const handleCandleEnterRef = useRef<() => void>(() => {});
@@ -221,18 +242,45 @@ export function ResultPageShell({
 
   const { cancel: cancelFirstInteraction } = useFirstInteraction(
     useCallback(() => {
+      introMusic.unlock();
       birthdaySong.unlock();
       pianoMusic.unlock();
-    }, [birthdaySong, pianoMusic])
+      // 创建者预览页：开启了开场音乐且尚未完成后，首次交互时自动播放（fallback，若 autoplay 失败则在此补播）
+      if (isCreator && data?.introMusicEnabled && !introCompletedRef.current && !introStarted.current) {
+        introStarted.current = true;
+        activeTrackRef.current = "intro";
+        introMusic.fadeIn(0.6, () => {
+          introStarted.current = false;
+          if (activeTrackRef.current === "intro") {
+            activeTrackRef.current = null;
+            setMusicOn(false);
+          }
+        });
+        setMusicOn(true);
+      }
+    }, [data?.introMusicEnabled, introMusic, isCreator, birthdaySong, pianoMusic])
   );
 
-  // 当 src 动态变化（如 data 异步加载完成）时，主动触发一次 unlock（此时通常仍在用户点击流程内）
+  // 当 src 动态变化（如 data 异步加载完成）时，主动触发 unlock 并尝试自动播放开场音乐
   useEffect(() => {
-    if (isCreator) {
-      birthdaySong.unlock();
-      pianoMusic.unlock();
+    if (!isCreator) return;
+    introMusic.unlock();
+    birthdaySong.unlock();
+    pianoMusic.unlock();
+    // 创建者预览页：数据加载完成后立即尝试自动播放开场音乐（浏览器可能因 autoplay policy 拒绝，此时由 useFirstInteraction fallback 补播）
+    if (data?.introMusicEnabled && !introCompletedRef.current && !introStarted.current) {
+      introStarted.current = true;
+      activeTrackRef.current = "intro";
+      introMusic.fadeIn(0.6, () => {
+        introStarted.current = false;
+        if (activeTrackRef.current === "intro") {
+          activeTrackRef.current = null;
+          setMusicOn(false);
+        }
+      });
+      setMusicOn(true);
     }
-  }, [effectiveBirthdaySrc, effectiveGiftSrc, isCreator, birthdaySong, pianoMusic]);
+  }, [effectiveIntroSrc, effectiveBirthdaySrc, effectiveGiftSrc, isCreator, data?.introMusicEnabled, introMusic, birthdaySong, pianoMusic]);
 
   useEffect(() => {
     if (!data) return;
@@ -288,6 +336,42 @@ export function ResultPageShell({
     return birthdayFadePromiseRef.current;
   }, [birthdaySong]);
 
+  const ensureIntroMusicStopped = useCallback(() => {
+    if (introFadePromiseRef.current) return introFadePromiseRef.current;
+    if (!introStarted.current) return Promise.resolve();
+
+    introFadePromiseRef.current = new Promise<void>((resolve) => {
+      introMusic.fadeOut(() => {
+        introStarted.current = false;
+        if (activeTrackRef.current === "intro") {
+          activeTrackRef.current = null;
+          setMusicOn(false);
+        }
+        introFadePromiseRef.current = null;
+        resolve();
+      });
+    });
+
+    return introFadePromiseRef.current;
+  }, [introMusic]);
+
+  const startIntroMusic = useCallback(() => {
+    if (!data?.introMusicEnabled) return;
+    if (introCompletedRef.current || introStarted.current) return;
+    if (birthdaySongStarted.current || pianoStarted.current || giftOpened) return;
+
+    introStarted.current = true;
+    activeTrackRef.current = "intro";
+    introMusic.fadeIn(0.6, () => {
+      introStarted.current = false;
+      if (activeTrackRef.current === "intro") {
+        activeTrackRef.current = null;
+        setMusicOn(false);
+      }
+    });
+    setMusicOn(true);
+  }, [data?.introMusicEnabled, giftOpened, introMusic]);
+
   const handleCandleEnter = useCallback(() => {
     if (birthdaySongStarted.current) return;
     if (!curtainDone) return; // 引导幕未完全消散，不启动音乐
@@ -296,22 +380,29 @@ export function ResultPageShell({
     const container = scrollContainerRef.current;
     if (!container || container.scrollTop < window.innerHeight * 2.2) return;
 
-    birthdaySongStarted.current = true;
-    activeTrackRef.current = "birthday";
-    birthdaySong.fadeIn(0.72, () => {
-      // autoplay policy 阻止：重置状态后自动重试一次（延迟等待 unlock 完成）
-      birthdaySongStarted.current = false;
-      activeTrackRef.current = null;
-      setMusicOn(false);
-      // 延迟 600ms 重试：解决 unlock() 异步完成前 fadeIn 被拒的竞态问题
-      // 若用户已经离开蛋糕幕则不重试
-      window.setTimeout(() => {
-        if (birthdaySongStarted.current || birthdayExitedCakeRef.current) return;
-        handleCandleEnterRef.current();
-      }, 600);
-    });
-    setMusicOn(true);
-  }, [birthdaySong, curtainDone]);
+    introCompletedRef.current = true;
+    // 用 stop() 而非 fadeOut() 确保 AudioContext 立即释放，避免蜡烛页麦克风 detect 冲突
+    introMusic.stop();
+    const startBirthdaySong = () => {
+      birthdaySongStarted.current = true;
+      activeTrackRef.current = "birthday";
+      birthdaySong.fadeIn(0.72, () => {
+        // autoplay policy 阻止：重置状态后自动重试一次（延迟等待 unlock 完成）
+        birthdaySongStarted.current = false;
+        activeTrackRef.current = null;
+        setMusicOn(false);
+        // 延迟 600ms 重试：解决 unlock() 异步完成前 fadeIn 被拒的竞态问题
+        // 若用户已经离开蛋糕幕则不重试
+        window.setTimeout(() => {
+          if (birthdaySongStarted.current || birthdayExitedCakeRef.current) return;
+          handleCandleEnterRef.current();
+        }, 600);
+      });
+      setMusicOn(true);
+    };
+
+    startBirthdaySong();
+  }, [birthdaySong, curtainDone, introMusic]);
   handleCandleEnterRef.current = handleCandleEnter;
 
   const handleCurtainStart = useCallback(() => {
@@ -319,13 +410,17 @@ export function ResultPageShell({
     // 增加防止重复点击的保护
     if (!showCurtain) return;
 
+    introMusic.unlock();
     birthdaySong.unlock();
     pianoMusic.unlock();
+    startIntroMusic();
     setShowCurtain(false);
-  }, [birthdaySong, pianoMusic, showCurtain]);
+  }, [introMusic, birthdaySong, pianoMusic, showCurtain, startIntroMusic]);
 
   const handleCandleBlown = useCallback(() => {
+    introCompletedRef.current = true;
     birthdayExitedCakeRef.current = true;
+    void ensureIntroMusicStopped();
     void ensureBirthdaySongStopped();
     // 移动端 scroll-snap 会自然滚到礼物幕，不要强制跳转（会与 scroll-snap 冲突导致弹回）
     const isTouchDevice =
@@ -338,7 +433,7 @@ export function ResultPageShell({
         scrollToSection(giftRef.current);
       });
     }
-  }, [ensureBirthdaySongStopped, scrollToSection]);
+  }, [ensureIntroMusicStopped, ensureBirthdaySongStopped, scrollToSection]);
 
   const handleGiftEnter = useCallback(() => {
     if (!curtainDone) return; // 引导幕未完全消散，不处理
@@ -347,18 +442,21 @@ export function ResultPageShell({
     const container = scrollContainerRef.current;
     if (!container || container.scrollTop < window.innerHeight * 3.2) return;
 
+    introCompletedRef.current = true;
     birthdayExitedCakeRef.current = true;
+    void ensureIntroMusicStopped();
     // 强制重置状态，确保 ensureBirthdaySongStopped 不被 birthdaySongStarted=false 拦截
     // 移动端 autoplay 重试期间 birthdaySongStarted 可能为 false，但 audio 实际在播
     birthdaySongStarted.current = true;
     birthdayFadePromiseRef.current = null;
     void ensureBirthdaySongStopped();
-  }, [ensureBirthdaySongStopped, curtainDone]);
+  }, [ensureIntroMusicStopped, ensureBirthdaySongStopped, curtainDone]);
 
   const handleGiftTap = useCallback(() => {
     if (!curtainDone) return; // 引导幕未完全消散，不响应
     // 点击礼物瞬间立即启动：停止 birthday song、预启动 piano（静音），不等 1400ms 动画
     // 注意：setGiftOpened 不在这里调用，避免信件字幕在滚动前提前开始
+    introCompletedRef.current = true;
     if (!pianoStarted.current) {
       pianoStarted.current = true;
       activeTrackRef.current = "gift";
@@ -367,11 +465,13 @@ export function ResultPageShell({
     } else {
       activeTrackRef.current = "gift";
     }
+    void ensureIntroMusicStopped();
     void ensureBirthdaySongStopped();
-  }, [ensureBirthdaySongStopped, pianoMusic]);
+  }, [ensureIntroMusicStopped, ensureBirthdaySongStopped, pianoMusic]);
 
   const handleGiftOpen = useCallback(() => {
     const openGiftFlow = async () => {
+      introCompletedRef.current = true;
       setGiftOpened(true);  // 在这里设置，确保信件动画在滚动后才开始
       activeTrackRef.current = "gift"; // 提前设置，防止 ensureBirthdaySongStopped 的 onDone 覆盖 musicOn
       // 立即滚动，不等 birthday song fadeOut
@@ -385,12 +485,13 @@ export function ResultPageShell({
       } else {
         requestAnimationFrame(() => { scrollToSection(scene5Ref.current); });
       }
+      await ensureIntroMusicStopped();
       await ensureBirthdaySongStopped();
       setMusicOn(true); // 提前设置，确保按钮渲染时状态已更新
       pianoMusic.fadeIn(0.65);
     };
     void openGiftFlow();
-  }, [ensureBirthdaySongStopped, pianoMusic, scrollToSection]);
+  }, [ensureIntroMusicStopped, ensureBirthdaySongStopped, pianoMusic, scrollToSection]);
 
   const handleLetterDone = useCallback(() => {
     if (!scene5PhotosRef.current) return;
@@ -415,30 +516,34 @@ export function ResultPageShell({
   const handleEndingVisible = useCallback(() => {
     setEndingVisible(true);
     // 同步按钮状态与实际播放状态，防止状态流转中的时序问题导致显示错误
-    setMusicOn(pianoMusic.isPlaying() || birthdaySong.isPlaying());
-  }, [pianoMusic, birthdaySong]);
+    setMusicOn(introMusic.isPlaying() || pianoMusic.isPlaying() || birthdaySong.isPlaying());
+  }, [introMusic, pianoMusic, birthdaySong]);
 
   const handleNavigateAway = useCallback(() => {
     cancelFirstInteraction();
+    introMusic.stop();
     birthdaySong.stop();
     pianoMusic.stop();
     setMusicOn(false);
     onNavigateAway?.();
-  }, [birthdaySong, pianoMusic, cancelFirstInteraction, onNavigateAway]);
+  }, [introMusic, birthdaySong, pianoMusic, cancelFirstInteraction, onNavigateAway]);
 
   const handleGoHome = useCallback(() => {
     cancelFirstInteraction();
+    introMusic.stop();
     birthdaySong.stop();
     pianoMusic.stop();
     setMusicOn(false);
     setNavigatingAway(true);
     setTimeout(() => router.push("/"), 380);
-  }, [birthdaySong, pianoMusic, cancelFirstInteraction, router]);
+  }, [introMusic, birthdaySong, pianoMusic, cancelFirstInteraction, router]);
 
   const handleMusicToggle = useCallback(() => {
     if (pianoStarted.current || giftOpened || activeTrackRef.current === "gift") {
       const willPlay = !pianoMusic.isPlaying();
+      introMusic.stop();
       birthdaySong.stop();
+      introStarted.current = false;
       birthdaySongStarted.current = false;
       pianoMusic.toggle();
       setMusicOn(willPlay);
@@ -446,8 +551,12 @@ export function ResultPageShell({
       const willPlay = !birthdaySong.isPlaying();
       birthdaySong.toggle();
       setMusicOn(willPlay);
+    } else if (introStarted.current || activeTrackRef.current === "intro") {
+      const willPlay = !introMusic.isPlaying();
+      introMusic.toggle();
+      setMusicOn(willPlay);
     }
-  }, [giftOpened, pianoMusic, birthdaySong]);
+  }, [giftOpened, introMusic, pianoMusic, birthdaySong]);
 
   const handleMicPromptChange = useCallback((active: boolean) => {
     micPromptActiveRef.current = active;
@@ -461,6 +570,7 @@ export function ResultPageShell({
 
   useEffect(() => {
     const onHide = () => {
+      introMusic.stop();
       birthdaySong.stop();
       pianoMusic.stop();
       activeTrackRef.current = null;
@@ -477,7 +587,7 @@ export function ResultPageShell({
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", onHide);
     };
-  }, [birthdaySong, pianoMusic]);
+  }, [introMusic, birthdaySong, pianoMusic]);
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -743,8 +853,8 @@ export function ResultPageShell({
         )}
       </AnimatePresence>
 
-      {isCreator && shareUrl && (
-        <CreatorToolbar shareUrl={shareUrl} sessionId={remoteSessionId ?? null} onNavigateAway={handleNavigateAway} onTakeSnapshot={handleTakeSnapshot} snapshotLoading={screenshotLoading} />
+      {isCreator && (
+        <CreatorToolbar shareUrl={shareUrl} sessionId={sessionId ?? remoteSessionId ?? null} onNavigateAway={handleNavigateAway} onTakeSnapshot={handleTakeSnapshot} snapshotLoading={screenshotLoading} />
       )}
 
       {/* 成品页（非创建者）：音乐按钮上方显示截图提示语 */}
