@@ -179,7 +179,12 @@ export function StepFlow({ restoreSid }: { restoreSid?: string | null }) {
       const saveRes = await fetch("/api/session/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(birthdayData),
+        // strip dataUrl 避免 body 超过 500KB 限制（图片已上传 R2，只需 imageKey）
+        body: JSON.stringify({
+          ...birthdayData,
+          cardPhotos: cardPhotos.map(({ dataUrl: _, ...rest }) => rest),
+          giftImages: giftImages.map(({ dataUrl: _d, ...rest }) => rest),
+        }),
       });
       if (!saveRes.ok) throw new Error("session save failed");
       const { sid: sessionSid } = await saveRes.json() as { sid: string };
